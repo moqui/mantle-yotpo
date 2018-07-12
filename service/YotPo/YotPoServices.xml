@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This software is in the public domain under CC0 1.0 Universal plus a 
+Grant of Patent License.
+
+To the extent possible under law, the author(s) have dedicated all
+copyright and related and neighboring rights to this software to the
+public domain worldwide. This software is distributed without any
+warranty.
+
+You should have received a copy of the CC0 Public Domain Dedication
+along with this software (see the LICENSE.md file). If not, see
+<http://creativecommons.org/publicdomain/zero/1.0/>.
+-->
+<services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
+
+    <!-- These services are based on the YotPo API, version 1. See: https://apidocs.yotpo.com/reference#general-information -->
+    
+    <service verb="create" noun="Order">
+        <in-parameters>
+            <parameter name="validateData" required="true"/>
+            <parameter name="platform"/>
+            <parameter name="email"/>
+            <parameter name="customerName"/>
+            <parameter name="orderId"/>
+            <parameter name="orderDate"/>
+            <parameter name="currencyIso"/>
+            <parameter name="products" type="Map"/>
+        </in-parameters>
+        <out-parameters>
+        </out-parameters>
+        <actions>
+        </actions>
+    </service>
+
+    <service verb="create" noun="Review">
+        <in-parameters>
+            <parameter name="domain"/>
+            <parameter name="sku" required="true"><description>The Product ID</description></parameter>
+            <parameter name="productTitle" required="true"/>
+            <parameter name="productDescription" required="true"/>
+            <parameter name="productUrl" required="true"/>
+            <parameter name="productImageUrl" required="true"/>
+            <parameter name="displayName" required="true"/>
+            <parameter name="email" required="true"/>
+            <parameter name="reviewContent" required="true"/>
+            <parameter name="reviewTitle" required="true"/>
+            <parameter name="reviewScore" required="true"/>
+            <parameter name="timeStamp"/>
+            <parameter name="yotPoConfigId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="responseMap"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
+            <if condition="yotPoConfig == null">
+                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
+            </if>
+
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
+            <if condition="token == null">
+                <return error="true" message="Error with Access Token."/>
+            </if>
+            <set field="uToken" from="token.token.access_token"/>
+
+            <set field="requestMap" from="[appkey:yotPoConfig.clientId, domain:domain, sku:sku,
+                product_title:productTitle, product_description:productDescription, product_url:productUrl,
+                product_image_url:productImageUrl, display_name:displayName, email:email, review_content:reviewContent,
+                review_title:reviewTitle, review_score:reviewScore, time_stamp:timeStamp]" />
+
+            <script><![CDATA[
+                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
+                        .addHeader("Content-Type", "application/json").jsonObject(requestMap)
+                restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
+                        .path("${yotPoConfig.apiVersion}").path("widget").path("reviews").build()
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                    
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    return
+                }
+
+                responseMap = restResponse.jsonObject()
+
+            ]]></script>
+        </actions>
+    </service>
+
+    <service verb="get" noun="ReviewByProduct">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+            <parameter name="yotPoConfigId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="responseMap"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
+            <if condition="yotPoConfig == null">
+                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
+            </if>
+
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
+            <if condition="token == null">
+                <return error="true" message="Error with Access Token."/>
+            </if>
+            <set field="uToken" from="token.token.access_token"/>
+
+            <script><![CDATA[
+                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.GET)
+                restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
+                        .path("${yotPoConfig.apiVersion}").path("widget").path("${yotPoConfig.clientId}")
+                        .path("products").path("${productId}").path("reviews.json").build()
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                    
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    return
+                }
+
+                responseMap = restResponse.jsonObject()
+
+            ]]></script>
+
+        </actions>
+    </service>
+
+    <service verb="send" noun="EmailAfterPurchase">
+        <in-parameters>
+            <parameter name="email" required="true"/>
+            <parameter name="yotPoConfigId" required="true"/>
+        </in-parameters>
+        <actions>
+            <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
+            <if condition="yotPoConfig == null">
+                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
+            </if>
+
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
+            <if condition="token == null">
+                <return error="true" message="Error with Access Token."/>
+            </if>
+            <set field="uToken" from="token.token.access_token"/>
+             
+            <set field="requestMap" from="[utoken:uToken, 
+                email_type:'map', email:email]" />
+
+            <script><![CDATA[
+                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
+                        .addHeader("Content-Type", "application/json").jsonObject(requestMap)
+                restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
+                        .path("apps").path("${yotPoConfig.clientId}").path("reminders").path("send_test_email").build()
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                    
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    return
+                }
+
+                responseMap = restResponse.jsonObject()
+
+            ]]></script> 
+        </actions>
+    </service>
+
+
+    <service verb="login" noun="YotPo">
+        <in-parameters>
+            <parameter name="yotPoConfigId"/>
+            <parameter name="yotPoConfig" type="Map"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="token" type="Map"/>
+        </out-parameters>
+        <actions>
+            <if condition="yotPoConfig == null">
+                <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
+                <if condition="yotPoConfig == null">
+                    <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
+                </if>
+            </if>
+            
+            <set field="requestMap" from="[client_id:yotPoConfig.clientId, 
+                client_secret:yotPoConfig.clientSecret, grant_type:'client_credentials']" />
+
+            <script><![CDATA[
+                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
+                        .addHeader("Content-Type", "application/json").jsonObject(requestMap)
+                restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
+                        .path("oauth").path("token").build()
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                    
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    return
+                }
+
+                token = restResponse.jsonObject()
+
+                if(token.status != null || token.error != null) {
+                    ec.logger.error("YotPo API Error Response ${token.status != null ? token.status.code : token.error}")
+                    ec.message.addMessage("YotPo API Error Response ${token.status != null ? token.status.error_type : token.error}")
+                    token = null
+                    return
+                }
+            ]]></script> 
+        </actions>
+    </service>
+</services>
