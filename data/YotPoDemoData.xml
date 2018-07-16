@@ -14,6 +14,6 @@ along with this software (see the LICENSE.md file). If not, see
 -->
 <entity-facade-xml type="demo">
 	<YotPo.YotPoConfiguration yotPoConfigId="YotPoDemo" apiVersion="v1"
-		hostName="api.yotpo.com" clientId="pAN18voXxVbOGF5K7myXQZg6bX8wlUBzbDC7FoJP" 
-		clientSecret="6U5opE8GLl7k5KFkDfStWWVtszph25Ek3Hmjn0EM"/>
+		hostName="api.yotpo.com" clientId="" 
+		clientSecret=""/>
 </entity-facade-xml>
