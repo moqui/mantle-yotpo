@@ -18,18 +18,145 @@ along with this software (see the LICENSE.md file). If not, see
     
     <service verb="create" noun="Order">
         <in-parameters>
-            <parameter name="validateData" required="true"/>
-            <parameter name="platform"/>
-            <parameter name="email"/>
-            <parameter name="customerName"/>
-            <parameter name="orderId"/>
-            <parameter name="orderDate"/>
+            <parameter name="validateData" required="true"><description>A Boolean flag to indicate input validation in the response, by default is true</description></parameter>
+            <parameter name="platform" required="true"><description>The eCommerce platform</description></parameter>
+            <parameter name="email" required="true"/>
+            <parameter name="customerName" required="true"/>
+            <parameter name="orderId" required="true"/>
+            <parameter name="orderDate" required="true"><description>The date of the order in the format YYYY-MM-DD. If this is not provided, the time of the request will be used as the order date. </description></parameter>
             <parameter name="currencyIso"/>
-            <parameter name="products" type="Map"/>
+            <parameter name="yotPoConfigId" required="true"/>
+            <parameter name="itemsList" type="List">
+                <parameter name="products" type="Map">
+                    <parameter name="productId" required="true" />
+                    <parameter name="url" required="true"/>
+                    <parameter name="name" required="true"/>
+                    <parameter name="image" required="true"/>
+                    <parameter name="description" required="true"/>
+                    <parameter name="price" required="true"/>
+                    <parameter name="specs" type="Map" required="true">
+                    	<parameter name="upc"/>
+                    	<parameter name="isbn"/>
+                    </parameter>
+                    <parameter name="productTags" required="true"/>
+                </parameter>
+            </parameter>
         </in-parameters>
         <out-parameters>
+            <parameter name="responseMap"/>
+            <parameter name="requestMap"/>
         </out-parameters>
         <actions>
+            <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
+            <if condition="yotPoConfig == null">
+                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
+            </if>
+
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
+            <if condition="token == null">
+                <return error="true" message="Error with Access Token."/>
+            </if>
+            <set field="uToken" from="token.token.access_token"/>
+
+            <set field="productsList" from="[]"/>
+            <set field="itemMap" type="NewMap" value="null"/>
+            <script>itemMap = new HashMap()</script>
+            <iterate list="itemsList" entry="product">    
+                <set field="item" from="[url:product.url, name:product.name, 
+                    image:product.image, description: product.description, price:product.price, 
+                    specs:product.specs, product_tags:product.productTags]"/>
+                <script>itemMap.put(product.productId, item)</script>
+            </iterate>
+
+            <set field="requestMap" from="[validate_data:validateData, platform:platform, utoken:uToken, email:email,
+                customer_name:customerName, order_id:orderId, order_date:orderDate, currency_iso:currencyIso,
+                products:itemMap]" />
+
+
+            <script><![CDATA[
+                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
+                        .addHeader("Content-Type", "application/json").jsonObject(requestMap)
+                restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
+                        .path("apps").path("${yotPoConfig.clientId}").path("purchases").build()
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+            
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    return
+                }
+
+                responseMap = restResponse.jsonObject()
+
+            ]]></script>
+        </actions>
+    </service>
+
+    <service verb="create" noun="MassProduct">
+        <in-parameters>
+            <parameter name="itemsList" type="List">
+                <parameter name="products" type="Map">
+                    <parameter name="productId" required="true"/>
+                    <parameter name="name" required="true"/>
+                    <parameter name="url" required="true"/>
+                    <parameter name="imageUrl"/>
+                    <parameter name="description"/>
+                    <parameter name="currency"/>
+                    <parameter name="price"/>
+                    <parameter name="productTags"><description>accept one tag per product and may not contain commas</description></parameter>
+                    <parameter name="specs" type="Map">
+                        <parameter name="upc"><description>Universal Product Code (UPC)</description></parameter>
+                        <parameter name="mpn"><description>Manufacturer Part Number (MPN)</description> </parameter>
+                        <parameter name="brand"/>
+                    </parameter>
+                </parameter>
+        	</parameter>
+            <parameter name="yotPoConfigId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="responseMap"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
+            <if condition="yotPoConfig == null">
+                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
+            </if>
+
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
+            <if condition="token == null">
+                <return error="true" message="Error with Access Token."/>
+            </if>
+            <set field="uToken" from="token.token.access_token"/>
+            
+            <set field="itemMap" type="NewMap" value="null"/>
+            <script>itemMap = new HashMap()</script>
+            <iterate list="itemsList" entry="product">
+                <set field="item" from="[name:product.name, url:product.url, 
+                    image_url:product.imageUrl, 
+                    description:product.description, currency:product.currency, price:product.price, 
+                    product_tags:product.productTags, specs:product.specs]"/>
+                <script>itemMap.put(product.productId, item)</script>
+            </iterate>
+
+            <set field="requestMap" from="[utoken:uToken, products:itemMap]"/>
+            
+            <script><![CDATA[
+                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
+                        .addHeader("Content-Type", "application/json").jsonObject(requestMap)
+                restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
+                        .path("apps").path("${yotPoConfig.clientId}").path("products").path("mass_create").build()
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                    
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    return
+                }
+
+                responseMap = restResponse.jsonObject()
+
+            ]]></script>
+
         </actions>
     </service>
 
@@ -166,7 +293,6 @@ along with this software (see the LICENSE.md file). If not, see
             ]]></script> 
         </actions>
     </service>
-
 
     <service verb="login" noun="YotPo">
         <in-parameters>
