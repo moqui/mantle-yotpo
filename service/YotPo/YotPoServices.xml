@@ -165,7 +165,7 @@ along with this software (see the LICENSE.md file). If not, see
             <parameter name="domain"/>
             <parameter name="sku" required="true"><description>The Product ID</description></parameter>
             <parameter name="productTitle" required="true"/>
-            <parameter name="productDescription" required="true"/>
+            <parameter name="productDescription" required="true" allow-html="any"/>
             <parameter name="productUrl" required="true"/>
             <parameter name="productImageUrl" required="true"/>
             <parameter name="displayName" required="true"/>
