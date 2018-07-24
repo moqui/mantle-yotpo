@@ -19,32 +19,37 @@ along with this software (see the LICENSE.md file). If not, see
     <service verb="create" noun="Order">
         <in-parameters>
             <parameter name="validateData" required="true"><description>A Boolean flag to indicate input validation in the response, by default is true</description></parameter>
+            <!-- e-Commerce Platforms from YOTPO
+                3dcart                 three_d_cart
+                AmeriCommerce          americommerce
+                Bigcommerce            bigcommerce
+                Commerce Guys          commerce_guys
+                CS-Cart                cscart
+                ebay                   ebay
+                EC-CUBE                eccube
+                Lightspeed             seoshop
+                Magento                magento
+                OpenCart               opencart
+                PrestaShop             prestashop
+                Shopify                shopify
+                Shoplo                 shoplo
+                Storenvy               storenvy
+                Volusion               volusion
+                WooCommerce            woocommerce
+                WP eCommerce           wp_ecommerce
+                Zepo                   zepo
+                Any other platform     general
+            -->
             <parameter name="platform" required="true"><description>The eCommerce platform</description></parameter>
             <parameter name="email" required="true"/>
             <parameter name="customerName" required="true"/>
             <parameter name="orderId" required="true"/>
-            <parameter name="orderDate" required="true"><description>The date of the order in the format YYYY-MM-DD. If this is not provided, the time of the request will be used as the order date. </description></parameter>
-            <parameter name="currencyIso"/>
             <parameter name="yotPoConfigId" required="true"/>
-            <parameter name="itemsList" type="List">
-                <parameter name="products" type="Map">
-                    <parameter name="productId" required="true" />
-                    <parameter name="url" required="true"/>
-                    <parameter name="name" required="true"/>
-                    <parameter name="image" required="true"/>
-                    <parameter name="description" required="true"/>
-                    <parameter name="price" required="true"/>
-                    <parameter name="specs" type="Map" required="true">
-                    	<parameter name="upc"/>
-                    	<parameter name="isbn"/>
-                    </parameter>
-                    <parameter name="productTags" required="true"/>
-                </parameter>
-            </parameter>
+            <parameter name="pathImages" required="true"/>
+            <parameter name="urlProducts" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="responseMap"/>
-            <parameter name="requestMap"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
@@ -52,25 +57,52 @@ along with this software (see the LICENSE.md file). If not, see
                 <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
             </if>
 
+            <service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:orderId]" out-map="orderInfo"/>
+            <set field="productsList" type="NewMap" value="null"/>
+            <script>productsList = new HashMap()</script>
+
+            <iterate list="orderInfo.orderItemList" entry="orderItem">
+                <if condition="orderItem.itemTypeEnumId == 'ItemProduct'">
+                    <set field="productId" from="orderItem.productId"/>
+                    <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
+                    <entity-find entity-name="mantle.product.ProductContent" list="contentList" cache="true">
+                        <date-filter/><econdition field-name="productId"/>
+                        <order-by field-name="sequenceNum,-fromDate"/>
+                    </entity-find>
+                    <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
+                    <set field="longDescLocation" from="contentList.find({'PcntDescriptionLong' == 
+                        it.productContentTypeEnumId})?.contentLocation"/>
+
+                    <if condition="longDescLocation">
+                        <set field="descriptionLong" from="ec.resource.getLocationText(longDescLocation, true)"/>
+                    </if>
+
+                    <set field="item" from="[url:urlProducts + orderItem.productId, name:orderItem.itemDescription, 
+                        image:imageDetail.contentLocation.endsWith('.jpg') ? pathImages + imageDetail.productContentId +'.jpg' :
+                        pathImages + imageDetail.productContentId, description: descriptionLong ? descriptionLong : '', 
+                        price:orderItem.unitAmount, 
+                        specs:[sku:orderItem.productId], product_tags:product.comments]"/>
+                    <script>productsList.put(orderItem.productId, item)</script>
+                </if> 
+            </iterate>
+             
             <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
             <if condition="token == null">
                 <return error="true" message="Error with Access Token."/>
             </if>
             <set field="uToken" from="token.token.access_token"/>
 
-            <set field="productsList" from="[]"/>
-            <set field="itemMap" type="NewMap" value="null"/>
-            <script>itemMap = new HashMap()</script>
-            <iterate list="itemsList" entry="product">    
-                <set field="item" from="[url:product.url, name:product.name, 
-                    image:product.image, description: product.description, price:product.price, 
-                    specs:product.specs, product_tags:product.productTags]"/>
-                <script>itemMap.put(product.productId, item)</script>
-            </iterate>
+            <script>
+                import java.text.SimpleDateFormat
 
+                Calendar calendar = Calendar.getInstance()
+                calendar.setTimeInMillis(orderInfo.orderHeader.entryDate.getTime())
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd")
+                String date = format.format(calendar.getTime())
+            </script>
             <set field="requestMap" from="[validate_data:validateData, platform:platform, utoken:uToken, email:email,
-                customer_name:customerName, order_id:orderId, order_date:orderDate, currency_iso:currencyIso,
-                products:itemMap]" />
+                customer_name:customerName,order_date:date, order_id:orderId,currency_iso:orderInfo.orderHeader.currencyUomId,
+                products:productsList]" />
 
 
             <script><![CDATA[
@@ -91,10 +123,20 @@ along with this software (see the LICENSE.md file). If not, see
             ]]></script>
         </actions>
     </service>
-
+    
     <service verb="create" noun="MassProduct">
         <in-parameters>
-            <parameter name="itemsList" type="List">
+            <parameter name="productId" required="true"/>
+            <parameter name="yotPoConfigId" required="true"/>
+            <parameter name="pathImages" required="true"/>
+            <parameter name="urlProducts" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="responseMap"/>
+        </out-parameters>
+        <actions>
+            <!-- 
+                <parameter name="itemsList" type="List">
                 <parameter name="products" type="Map">
                     <parameter name="productId" required="true"/>
                     <parameter name="name" required="true"/>
@@ -105,40 +147,39 @@ along with this software (see the LICENSE.md file). If not, see
                     <parameter name="price"/>
                     <parameter name="productTags"><description>accept one tag per product and may not contain commas</description></parameter>
                     <parameter name="specs" type="Map">
-                        <parameter name="upc"><description>Universal Product Code (UPC)</description></parameter>
-                        <parameter name="mpn"><description>Manufacturer Part Number (MPN)</description> </parameter>
-                        <parameter name="brand"/>
+                        <parameter name="sku"><description>ProductId</description></parameter>
                     </parameter>
                 </parameter>
-        	</parameter>
-            <parameter name="yotPoConfigId" required="true"/>
-        </in-parameters>
-        <out-parameters>
-            <parameter name="responseMap"/>
-        </out-parameters>
-        <actions>
+            </parameter>
+             -->
+
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null">
                 <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
             </if>
+
+            <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
+            <entity-find entity-name="mantle.product.ProductContent" list="contentList" cache="true">
+                <date-filter/><econdition field-name="productId"/>
+                <order-by field-name="sequenceNum,-fromDate"/>
+            </entity-find>
+            <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
+            <set field="longDescLocation" from="contentList.find({'PcntDescriptionLong' == 
+                        it.productContentTypeEnumId})?.contentLocation"/>
 
             <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
             <if condition="token == null">
                 <return error="true" message="Error with Access Token."/>
             </if>
             <set field="uToken" from="token.token.access_token"/>
-            
-            <set field="itemMap" type="NewMap" value="null"/>
-            <script>itemMap = new HashMap()</script>
-            <iterate list="itemsList" entry="product">
-                <set field="item" from="[name:product.name, url:product.url, 
-                    image_url:product.imageUrl, 
-                    description:product.description, currency:product.currency, price:product.price, 
-                    product_tags:product.productTags, specs:product.specs]"/>
-                <script>itemMap.put(product.productId, item)</script>
-            </iterate>
 
-            <set field="requestMap" from="[utoken:uToken, products:itemMap]"/>
+            <set field="item" from="[name:product.productName, url:urlProducts + productId, 
+                image_url:imageDetail.contentLocation.endsWith('.jpg') ? pathImages + imageDetail.productContentId +'.jpg' :
+                pathImages + imageDetail.productContentId, 
+                description:descriptionLong ? descriptionLong : '', currency:product.priceUomId, price:product.price, 
+                product_tags:product.comments, specs:[sku:orderItem.productId]]"/>
+
+            <set field="requestMap" from="[utoken:uToken, products:item]"/>
             
             <script><![CDATA[
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
