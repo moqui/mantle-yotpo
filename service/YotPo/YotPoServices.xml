@@ -124,7 +124,7 @@ along with this software (see the LICENSE.md file). If not, see
         </actions>
     </service>
     
-    <service verb="create" noun="MassProduct">
+    <service verb="update" noun="Product">
         <in-parameters>
             <parameter name="productId" required="true"/>
             <parameter name="yotPoConfigId" required="true"/>
@@ -135,24 +135,6 @@ along with this software (see the LICENSE.md file). If not, see
             <parameter name="responseMap"/>
         </out-parameters>
         <actions>
-            <!-- 
-                <parameter name="itemsList" type="List">
-                <parameter name="products" type="Map">
-                    <parameter name="productId" required="true"/>
-                    <parameter name="name" required="true"/>
-                    <parameter name="url" required="true"/>
-                    <parameter name="imageUrl"/>
-                    <parameter name="description"/>
-                    <parameter name="currency"/>
-                    <parameter name="price"/>
-                    <parameter name="productTags"><description>accept one tag per product and may not contain commas</description></parameter>
-                    <parameter name="specs" type="Map">
-                        <parameter name="sku"><description>ProductId</description></parameter>
-                    </parameter>
-                </parameter>
-            </parameter>
-             -->
-
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null">
                 <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
@@ -166,6 +148,19 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
             <set field="longDescLocation" from="contentList.find({'PcntDescriptionLong' == 
                         it.productContentTypeEnumId})?.contentLocation"/>
+            
+            <if condition="longDescLocation">
+                <set field="descriptionLong" from="ec.resource.getLocationText(longDescLocation, true)"/>
+            </if>
+
+            <set from="ec.web.sessionAttributes" field="sessionAttributes"/>
+            <set field="productStoreId" from="sessionAttributes.productStoreId"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
+            <set field="priceUomId" from="productStore?.defaultCurrencyUomId"/>
+
+            <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceMap"
+                    in-map="[productId:productId, priceUomId:priceUomId, productStoreId:productStoreId]"/>
+            <set field="price" from="priceMap.price"/>
 
             <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
             <if condition="token == null">
@@ -176,10 +171,89 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="item" from="[name:product.productName, url:urlProducts + productId, 
                 image_url:imageDetail.contentLocation.endsWith('.jpg') ? pathImages + imageDetail.productContentId +'.jpg' :
                 pathImages + imageDetail.productContentId, 
-                description:descriptionLong ? descriptionLong : '', currency:product.priceUomId, price:product.price, 
-                product_tags:product.comments, specs:[sku:orderItem.productId]]"/>
+                description:descriptionLong ? descriptionLong : '', currency:priceUomId ? priceUomId : 'USD', price:price, 
+                product_tags:product.comments, specs:[sku:productId]]"/>
+            
+            <set field="productMap" type="NewMap" value="null"/>
+            <script>productMap = new HashMap()</script>
+            <script>productMap.put(productId, item)</script>
 
-            <set field="requestMap" from="[utoken:uToken, products:item]"/>
+            <set field="requestMap" from="[utoken:uToken, products:productMap]"/>
+            
+            <script><![CDATA[
+                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.PUT)
+                        .addHeader("Content-Type", "application/json").jsonObject(requestMap)
+                restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
+                        .path("apps").path("${yotPoConfig.clientId}").path("products").path("mass_update").build()
+                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
+                    
+                if (restResponse.statusCode != 200) {
+                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    return
+                }
+
+                responseMap = restResponse.jsonObject()
+
+            ]]></script>
+        </actions>
+    </service>
+
+    <service verb="create" noun="Product">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+            <parameter name="yotPoConfigId" required="true"/>
+            <parameter name="pathImages" required="true"/>
+            <parameter name="urlProducts" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="responseMap"/>
+        </out-parameters>
+        <actions>
+            <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
+            <if condition="yotPoConfig == null">
+                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
+            </if>
+
+            <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
+            <entity-find entity-name="mantle.product.ProductContent" list="contentList" cache="true">
+                <date-filter/><econdition field-name="productId"/>
+                <order-by field-name="sequenceNum,-fromDate"/>
+            </entity-find>
+            <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
+            <set field="longDescLocation" from="contentList.find({'PcntDescriptionLong' == 
+                        it.productContentTypeEnumId})?.contentLocation"/>
+            
+            <if condition="longDescLocation">
+                <set field="descriptionLong" from="ec.resource.getLocationText(longDescLocation, true)"/>
+            </if>
+
+            <set from="ec.web.sessionAttributes" field="sessionAttributes"/>
+            <set field="productStoreId" from="sessionAttributes.productStoreId"/>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore"/>
+            <set field="priceUomId" from="productStore?.defaultCurrencyUomId"/>
+
+            <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceMap"
+                    in-map="[productId:productId, priceUomId:priceUomId, productStoreId:productStoreId]"/>
+            <set field="price" from="priceMap.price"/>
+
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
+            <if condition="token == null">
+                <return error="true" message="Error with Access Token."/>
+            </if>
+            <set field="uToken" from="token.token.access_token"/>
+
+            <set field="item" from="[name:product.productName, url:urlProducts + productId, 
+                image_url:imageDetail.contentLocation.endsWith('.jpg') ? pathImages + imageDetail.productContentId +'.jpg' :
+                pathImages + imageDetail.productContentId, 
+                description:descriptionLong ? descriptionLong : '', currency:priceUomId ? priceUomId : 'USD', price:price, 
+                product_tags:product.comments, specs:[sku:productId]]"/>
+            
+            <set field="productMap" type="NewMap" value="null"/>
+            <script>productMap = new HashMap()</script>
+            <script>productMap.put(productId, item)</script>
+
+            <set field="requestMap" from="[utoken:uToken, products:productMap]"/>
             
             <script><![CDATA[
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
@@ -197,7 +271,6 @@ along with this software (see the LICENSE.md file). If not, see
                 responseMap = restResponse.jsonObject()
 
             ]]></script>
-
         </actions>
     </service>
 
