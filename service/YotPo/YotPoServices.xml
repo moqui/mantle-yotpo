@@ -309,12 +309,17 @@ along with this software (see the LICENSE.md file). If not, see
                 product_title:productTitle, product_description:productDescription, product_url:productUrl,
                 product_image_url:productImageUrl, display_name:displayName, email:email, review_content:reviewContent,
                 review_title:reviewTitle, review_score:reviewScore, time_stamp:timeStamp]" />
-
+            <!-- Path only for tests 
+                .path("reviews")path("dynamic_create")
+            -->
+            <!-- Path for production 
+                .path("${yotPoConfig.apiVersion}").path("widget").path("reviews").build() 
+             -->
             <script><![CDATA[
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
                         .addHeader("Content-Type", "application/json").jsonObject(requestMap)
                 restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
-                        .path("${yotPoConfig.apiVersion}").path("widget").path("reviews").build()
+                        .path("reviews")path("dynamic_create").build()
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                     
                 if (restResponse.statusCode != 200) {
