@@ -338,6 +338,7 @@ along with this software (see the LICENSE.md file). If not, see
         <in-parameters>
             <parameter name="productId" required="true"/>
             <parameter name="yotPoConfigId" required="true"/>
+            <parameter name="perPage" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="responseMap"/>
@@ -358,7 +359,7 @@ along with this software (see the LICENSE.md file). If not, see
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.GET)
                 restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
                         .path("${yotPoConfig.apiVersion}").path("widget").path("${yotPoConfig.clientId}")
-                        .path("products").path("${productId}").path("reviews.json").build()
+                        .path("products").path("${productId}").path("reviews.json?per_page=${perPage}").build()
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                     
                 if (restResponse.statusCode != 200) {
