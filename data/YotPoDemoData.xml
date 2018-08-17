@@ -13,7 +13,28 @@ along with this software (see the LICENSE.md file). If not, see
 <http://creativecommons.org/publicdomain/zero/1.0/>.
 -->
 <entity-facade-xml type="demo">
+	<!-- e-Commerce Platforms from YOTPO
+                3dcart                 three_d_cart
+                AmeriCommerce          americommerce
+                Bigcommerce            bigcommerce
+                Commerce Guys          commerce_guys
+                CS-Cart                cscart
+                ebay                   ebay
+                EC-CUBE                eccube
+                Lightspeed             seoshop
+                Magento                magento
+                OpenCart               opencart
+                PrestaShop             prestashop
+                Shopify                shopify
+                Shoplo                 shoplo
+                Storenvy               storenvy
+                Volusion               volusion
+                WooCommerce            woocommerce
+                WP eCommerce           wp_ecommerce
+                Zepo                   zepo
+                Any other platform     general
+    -->
 	<YotPo.YotPoConfiguration yotPoConfigId="YotPoDemo" apiVersion="v1"
 		hostName="api.yotpo.com" clientId="" 
-		clientSecret=""/>
+		clientSecret="" platform="general"/>
 </entity-facade-xml>

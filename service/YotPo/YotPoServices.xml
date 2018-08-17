@@ -19,47 +19,61 @@ along with this software (see the LICENSE.md file). If not, see
     <service verb="create" noun="Order">
         <in-parameters>
             <parameter name="validateData" required="true"><description>A Boolean flag to indicate input validation in the response, by default is true</description></parameter>
-            <!-- e-Commerce Platforms from YOTPO
-                3dcart                 three_d_cart
-                AmeriCommerce          americommerce
-                Bigcommerce            bigcommerce
-                Commerce Guys          commerce_guys
-                CS-Cart                cscart
-                ebay                   ebay
-                EC-CUBE                eccube
-                Lightspeed             seoshop
-                Magento                magento
-                OpenCart               opencart
-                PrestaShop             prestashop
-                Shopify                shopify
-                Shoplo                 shoplo
-                Storenvy               storenvy
-                Volusion               volusion
-                WooCommerce            woocommerce
-                WP eCommerce           wp_ecommerce
-                Zepo                   zepo
-                Any other platform     general
-            -->
-            <parameter name="platform" required="true"><description>The eCommerce platform</description></parameter>
-            <parameter name="email" required="true"/>
-            <parameter name="customerName" required="true"/>
             <parameter name="orderId" required="true"/>
-            <parameter name="yotPoConfigId" required="true"/>
-            <parameter name="pathImages" required="true"/>
-            <parameter name="urlProducts" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="responseMap"/>
         </out-parameters>
         <actions>
+            <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader"/>
+            <if condition="orderHeader == null"><return/></if>
+            <set field="productStoreId" from="orderHeader.productStoreId"/>
+            <if condition="!productStoreId"><return/></if>
+
+            <set field="orderPartList" from="orderHeader.parts"/>
+            <set field="customerPartyId" from="orderPartList[0].customerPartyId"/>
+
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <field-map field-name="productStoreId"/></entity-find-one>
+
+            <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
+
+            <if condition="yotPoConfigId == null"><return/></if>
+
+            <service-call name="mantle.party.ContactServices.get#PartyContactInfo" out-map="emailInfo"
+                in-map="[partyId:customerPartyId, emailContactMechPurposeId:'EmailOrder', 
+                defaultToPrimaryPurpose:true]"/>
+            <set field="email" from="emailInfo.emailAddress"/>
+            <if condition="email == null"><return/></if>
+
+            <entity-find-one entity-name="mantle.party.PartyDetail" value-field="partyDetail">
+                <field-map field-name="partyId" from="customerPartyId"/>
+            </entity-find-one>
+
+            <if condition="partyDetail == null"><return/></if>
+
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null">
                 <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
             </if>
 
+            <set field="customerName" from="partyDetail.firstName + partyDetail.lastName + partyDetail.organizationName ? partyDetail.organizationName : ''"/>
+
             <service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:orderId]" out-map="orderInfo"/>
             <set field="productsList" type="NewMap" value="null"/>
             <script>productsList = new HashMap()</script>
+            
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" value-field="productImageLocation">
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" from="'PsstProductImageLoc'"/>
+            </entity-find>
+            <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue"/>
+
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" value-field="productDetailLocation">
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
+            </entity-find>
+            <set field="productDetailBaseUrl" from="productStore.storeDomain + '/' + productDetailLocation.settingValue"/>
 
             <iterate list="orderInfo.orderItemList" entry="orderItem">
                 <if condition="orderItem.itemTypeEnumId == 'ItemProduct'">
@@ -77,9 +91,8 @@ along with this software (see the LICENSE.md file). If not, see
                         <set field="descriptionLong" from="ec.resource.getLocationText(longDescLocation, true)"/>
                     </if>
 
-                    <set field="item" from="[url:urlProducts + orderItem.productId, name:orderItem.itemDescription, 
-                        image:imageDetail.contentLocation.endsWith('.jpg') ? pathImages + imageDetail.productContentId +'.jpg' :
-                        pathImages + imageDetail.productContentId, description: descriptionLong ? descriptionLong : '', 
+                    <set field="item" from="[url:productDetailBaseUrl + orderItem.productId, name:orderItem.itemDescription, 
+                        image:productImageBaseUrl, description: descriptionLong ? descriptionLong : '', 
                         price:orderItem.unitAmount, 
                         specs:[sku:orderItem.productId], product_tags:product.comments]"/>
                     <script>productsList.put(orderItem.productId, item)</script>
@@ -100,7 +113,7 @@ along with this software (see the LICENSE.md file). If not, see
                 SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd")
                 String date = format.format(calendar.getTime())
             </script>
-            <set field="requestMap" from="[validate_data:validateData, platform:platform, utoken:uToken, email:email,
+            <set field="requestMap" from="[validate_data:validateData, platform:yotPoConfig.platform, utoken:uToken, email:email,
                 customer_name:customerName,order_date:date, order_id:orderId,currency_iso:orderInfo.orderHeader.currencyUomId,
                 products:productsList]" />
 
@@ -127,14 +140,20 @@ along with this software (see the LICENSE.md file). If not, see
     <service verb="update" noun="Product">
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="yotPoConfigId" required="true"/>
-            <parameter name="pathImages" required="true"/>
-            <parameter name="urlProducts" required="true"/>
+            <parameter name="productStoreId" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="responseMap"/>
         </out-parameters>
         <actions>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <field-map field-name="productStoreId"/></entity-find-one>
+
+            <if condition="productStore == null"><return/></if>
+
+            <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
+
+
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null">
                 <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
@@ -167,10 +186,21 @@ along with this software (see the LICENSE.md file). If not, see
                 <return error="true" message="Error with Access Token."/>
             </if>
             <set field="uToken" from="token.token.access_token"/>
+          
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" value-field="productImageLocation">
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" from="'PsstProductImageLoc'"/>
+            </entity-find>
+            <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue"/>
 
-            <set field="item" from="[name:product.productName, url:urlProducts + productId, 
-                image_url:imageDetail.contentLocation.endsWith('.jpg') ? pathImages + imageDetail.productContentId +'.jpg' :
-                pathImages + imageDetail.productContentId, 
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" value-field="productDetailLocation">
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
+            </entity-find>
+            <set field="productDetailBaseUrl" from="productStore.storeDomain + '/' + productDetailLocation.settingValue"/>
+
+            <set field="item" from="[name:product.productName, url:productDetailBaseUrl + productId, 
+                image_url:productImageBaseUrl, 
                 description:descriptionLong ? descriptionLong : '', currency:priceUomId ? priceUomId : 'USD', price:price, 
                 product_tags:product.comments, specs:[sku:productId]]"/>
             
@@ -202,14 +232,19 @@ along with this software (see the LICENSE.md file). If not, see
     <service verb="create" noun="Product">
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="yotPoConfigId" required="true"/>
-            <parameter name="pathImages" required="true"/>
-            <parameter name="urlProducts" required="true"/>
+            <parameter name="productStoreId" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="responseMap"/>
         </out-parameters>
         <actions>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <field-map field-name="productStoreId"/></entity-find-one>
+
+            <if condition="productStore == null"><return/></if>
+
+            <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
+
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null">
                 <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
@@ -237,16 +272,27 @@ along with this software (see the LICENSE.md file). If not, see
                     in-map="[productId:productId, priceUomId:priceUomId, productStoreId:productStoreId]"/>
             <set field="price" from="priceMap.price"/>
 
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" value-field="productImageLocation">
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" from="'PsstProductImageLoc'"/>
+            </entity-find>
+            <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue"/>
+
+            <entity-find entity-name="mantle.product.store.ProductStoreSetting" value-field="productDetailLocation">
+                <econdition field-name="productStoreId" from="productStoreId"/>
+                <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
+            </entity-find>
+            <set field="productDetailBaseUrl" from="productStore.storeDomain + '/' + productDetailLocation.settingValue"/>
+
             <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
             <if condition="token == null">
                 <return error="true" message="Error with Access Token."/>
             </if>
             <set field="uToken" from="token.token.access_token"/>
 
-            <set field="item" from="[name:product.productName, url:urlProducts + productId, 
-                image_url:imageDetail.contentLocation.endsWith('.jpg') ? pathImages + imageDetail.productContentId +'.jpg' :
-                pathImages + imageDetail.productContentId, 
-                description:descriptionLong ? descriptionLong : '', currency:priceUomId ? priceUomId : 'USD', price:price, 
+            <set field="item" from="[name:product.productName, url:productDetailBaseUrl + productId, 
+                image_url:productImageBaseUrl, description:descriptionLong ? descriptionLong : '', 
+                currency:priceUomId ? priceUomId : 'USD', price:price, 
                 product_tags:product.comments, specs:[sku:productId]]"/>
             
             <set field="productMap" type="NewMap" value="null"/>
@@ -288,12 +334,19 @@ along with this software (see the LICENSE.md file). If not, see
             <parameter name="reviewTitle" required="true"/>
             <parameter name="reviewScore" required="true"/>
             <parameter name="timeStamp"/>
-            <parameter name="yotPoConfigId" required="true"/>
+            <parameter name="productStoreId" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="responseMap"/>
         </out-parameters>
         <actions>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <field-map field-name="productStoreId"/></entity-find-one>
+
+            <if condition="productStore == null"><return/></if>
+
+            <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
+
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null">
                 <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
@@ -337,13 +390,20 @@ along with this software (see the LICENSE.md file). If not, see
     <service verb="get" noun="ReviewByProduct">
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="yotPoConfigId" required="true"/>
+            <parameter name="productStoreId" required="true"/>
             <parameter name="perPage" required="true"/>
         </in-parameters>
         <out-parameters>
             <parameter name="responseMap"/>
         </out-parameters>
         <actions>
+            <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
+                <field-map field-name="productStoreId"/></entity-find-one>
+
+            <if condition="productStore == null"><return/></if>
+
+            <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
+
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null">
                 <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
@@ -359,7 +419,8 @@ along with this software (see the LICENSE.md file). If not, see
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.GET)
                 restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
                         .path("${yotPoConfig.apiVersion}").path("widget").path("${yotPoConfig.clientId}")
-                        .path("products").path("${productId}").path("reviews.json?per_page=${perPage}").build()
+                        .path("products").path("${productId}").path("reviews.json")
+                        .parameter("per_page", "${perPage}").build()
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                     
                 if (restResponse.statusCode != 200) {
@@ -372,45 +433,6 @@ along with this software (see the LICENSE.md file). If not, see
 
             ]]></script>
 
-        </actions>
-    </service>
-
-    <service verb="send" noun="EmailAfterPurchase">
-        <in-parameters>
-            <parameter name="email" required="true"/>
-            <parameter name="yotPoConfigId" required="true"/>
-        </in-parameters>
-        <actions>
-            <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
-            <if condition="yotPoConfig == null">
-                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
-            </if>
-
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
-            <if condition="token == null">
-                <return error="true" message="Error with Access Token."/>
-            </if>
-            <set field="uToken" from="token.token.access_token"/>
-             
-            <set field="requestMap" from="[utoken:uToken, 
-                email_type:'map', email:email]" />
-
-            <script><![CDATA[
-                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
-                        .addHeader("Content-Type", "application/json").jsonObject(requestMap)
-                restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
-                        .path("apps").path("${yotPoConfig.clientId}").path("reminders").path("send_test_email").build()
-                org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
-                    
-                if (restResponse.statusCode != 200) {
-                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
-                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
-                    return
-                }
-
-                responseMap = restResponse.jsonObject()
-
-            ]]></script> 
         </actions>
     </service>
 
