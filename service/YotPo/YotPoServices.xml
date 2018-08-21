@@ -119,11 +119,11 @@ along with this software (see the LICENSE.md file). If not, see
                 </if> 
             </iterate>
              
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
-            <if condition="token.token.access_token == null">
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <if condition="response.token.access_token == null">
                 <return error="true" message="Error with YotPo Access Token."/>
             </if>
-            <set field="uToken" from="token.token.access_token"/>
+            <set field="uToken" from="response.token.access_token"/>
 
             <script>
                 import java.text.SimpleDateFormat
@@ -182,17 +182,17 @@ along with this software (see the LICENSE.md file). If not, see
                 <order-by field-name="sequenceNum,-fromDate"/>
             </entity-find>
 
-            <set field="priceUomId" from="productStore?.defaultCurrencyUomId"/>
+            <set field="priceUomId" from="productStore.defaultCurrencyUomId ? productStore.defaultCurrencyUomId : 'USD'"/>
             <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceMap"
-                    in-map="[productId:productId, priceUomId:priceUomId ? priceUomId : 'USD', productStoreId:productStoreId]"/>
+                    in-map="[productId:productId, priceUomId:priceUomId, productStoreId:productStoreId]"/>
             <if condition="priceMap == null"><return message="No Price found with productId ${productId}"/></if>
             <set field="price" from="priceMap.price"/>
 
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
-            <if condition="token.token.access_token == null">
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <if condition="response.token.access_token == null">
                 <return error="true" message="Error with YotPo Access Token."/>
             </if>
-            <set field="uToken" from="token.token.access_token"/>
+            <set field="uToken" from="response.token.access_token"/>
           
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productImageLocation">
                 <econdition field-name="productStoreId" from="productStoreId"/>
@@ -230,7 +230,7 @@ along with this software (see the LICENSE.md file). If not, see
            
             <set field="item" from="[name:product.productName, url:productDetailBaseUrl, 
                 image_url:productImageBaseUrl, description:descriptionLong ? descriptionLong : '', 
-                currency:priceUomId ? priceUomId : 'USD', price:price, 
+                currency:priceUomId, price:price, 
                 product_tags:product.comments, specs:[sku:productId]]"/>
             
             <set field="productMap" type="NewMap" value="null"/>
@@ -270,6 +270,8 @@ along with this software (see the LICENSE.md file). If not, see
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
                 <field-map field-name="productStoreId"/></entity-find-one>
             <if condition="productStore == null"><return message="No productStore found with productStoreId ${productStoreId}"/></if>
+
+            <if condition="productStore.yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
 
             <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
             <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
@@ -332,9 +334,9 @@ along with this software (see the LICENSE.md file). If not, see
                 <order-by field-name="sequenceNum,-fromDate"/>
             </entity-find>
 
-            <set field="priceUomId" from="productStore?.defaultCurrencyUomId"/>
+            <set field="priceUomId" from="productStore.defaultCurrencyUomId ? productStore.defaultCurrencyUomId : 'USD'"/>
             <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceMap"
-                    in-map="[productId:productId, priceUomId:priceUomId ? priceUomId : 'USD', productStoreId:productStoreId]"/>
+                    in-map="[productId:productId, priceUomId:priceUomId, productStoreId:productStoreId]"/>
             <if condition="priceMap == null"><return message="No Price found with productId ${productId}"/></if>
             <set field="price" from="priceMap.price"/>
 
@@ -350,11 +352,12 @@ along with this software (see the LICENSE.md file). If not, see
             </entity-find-one>
             <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
-            <if condition="token.token.access_token == null">
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <if condition="response.token.access_token == null">
                 <return error="true" message="Error with YotPo Access Token."/>
             </if>
-            <set field="uToken" from="token.token.access_token"/>
+            <set field="uToken" from="response.token.access_token"/>
+            
             <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue"/>
             <if condition="contentList != null">
                 <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
@@ -379,7 +382,7 @@ along with this software (see the LICENSE.md file). If not, see
 
             <set field="item" from="[name:product.productName, url:productDetailBaseUrl, 
                 image_url:productImageBaseUrl, description:descriptionLong ? descriptionLong : '', 
-                currency:priceUomId ? priceUomId : 'USD', price:price, 
+                currency:priceUomId, price:price, 
                 product_tags:product.comments, specs:[sku:productId]]"/>
             
             <set field="productMap" type="NewMap" value="null"/>
@@ -446,9 +449,9 @@ along with this software (see the LICENSE.md file). If not, see
             </entity-find-one>
             <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
-            <set field="priceUomId" from="productStore?.defaultCurrencyUomId"/>
+            <set field="priceUomId" from="productStore.defaultCurrencyUomId ? productStore.defaultCurrencyUomId : 'USD'"/>
             <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceMap"
-                    in-map="[productId:productId, priceUomId:priceUomId ? priceUomId : 'USD', productStoreId:productStoreId]"/>
+                    in-map="[productId:productId, priceUomId:priceUomId, productStoreId:productStoreId]"/>
             <if condition="priceMap == null"><return message="No Price found with productId ${productId}"/></if>
             <set field="price" from="priceMap.price"/>
             
@@ -494,11 +497,11 @@ along with this software (see the LICENSE.md file). If not, see
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
-            <if condition="token.token.access_token == null">
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <if condition="response.token.access_token == null">
                 <return error="true" message="Error with Access Token."/>
             </if>
-            <set field="uToken" from="token.token.access_token"/>
+            <set field="uToken" from="response.token.access_token"/>
 
             <set field="requestMap" from="[appkey:yotPoConfig.clientId, domain:productStore.storeDomain, sku:productId,
                 product_title:product.productName, product_description:descriptionLong ? descriptionLong : '', 
@@ -550,11 +553,11 @@ along with this software (see the LICENSE.md file). If not, see
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
-            <if condition="token.token.access_token == null">
+            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <if condition="response.token.access_token == null">
                 <return error="true" message="Error with Access Token."/>
             </if>
-            <set field="uToken" from="token.token.access_token"/>
+            <set field="uToken" from="response.token.access_token"/>
 
             <script><![CDATA[
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.GET)
