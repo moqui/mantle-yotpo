@@ -24,9 +24,10 @@ along with this software (see the LICENSE.md file). If not, see
             <description>The secret that was received on user signup</description>
         </field>
         <field name="platform" type="text-medium" encrypt="true">
-            <description>e-Commerce Platforms from YOTPO</description>
+            <description>e-Commerce Platform from YOTPO</description>
         </field>
     </entity>
+    <!-- The yotPoConfigId field is added to the store entity -->
     <extend-entity entity-name="ProductStore" package-name="mantle.product.store">
         <field name="yotPoConfigId" type="text-medium" encrypt="true"/>
     </extend-entity>

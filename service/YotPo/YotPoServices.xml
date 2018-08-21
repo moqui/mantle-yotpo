@@ -26,7 +26,9 @@ along with this software (see the LICENSE.md file). If not, see
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.order.OrderHeader" value-field="orderHeader"/>
-            <if condition="orderHeader == null"><return/></if>
+            <if condition="orderHeader == null"><return message="No Order found with orderId ${orderId}"/></if>
+            <if condition="orderHeader.salesChannelEnumId != 'ScWeb'"><return message="This Order is not Web"/></if>
+
             <set field="productStoreId" from="orderHeader.productStoreId"/>
             <if condition="!productStoreId"><return message="No productStoreId found in order with orderId ${orderId}"/></if>
             
@@ -56,9 +58,7 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="partyDetail == null"><return message="No partyDetail found with partyId ${customerPartyId}"/></if>
 
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
-            <if condition="yotPoConfig == null">
-                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
-            </if>
+            <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
             <set field="organizationName" from="partyDetail.organizationName ? partyDetail.organizationName : ''"/>
             <set field="customerName" from="partyDetail.firstName + ' ' + partyDetail.lastName + ' ' + organizationName"/>
@@ -78,7 +78,7 @@ along with this software (see the LICENSE.md file). If not, see
                 <econdition field-name="productStoreId" from="productStoreId"/>
                 <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
             </entity-find-one>
-            <if condition="productImageLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
+            <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
             <iterate list="orderInfo.orderItemList" entry="orderItem">
                 <if condition="orderItem.itemTypeEnumId == 'ItemProduct'">
@@ -88,6 +88,7 @@ along with this software (see the LICENSE.md file). If not, see
                         <date-filter/><econdition field-name="productId"/>
                         <order-by field-name="sequenceNum,-fromDate"/>
                     </entity-find>
+                    <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue"/>
                     <if condition="contentList != null">
                         <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
                         <if condition="imageDetail == null">
@@ -96,7 +97,9 @@ along with this software (see the LICENSE.md file). If not, see
                                 <set field="imageDetail" from="contentList.find({'PcntImageSmall' == it.productContentTypeEnumId})"/>
                             </if>
                         </if>
-                        <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue + '/' + imageDetail.productContentId ? imageDetail.productContentId : ''"/>
+                        <if condition="imageDetail != null">
+                            <set field="productImageBaseUrl" from="productImageBaseUrl + '/' + imageDetail.productContentId ? imageDetail.productContentId : ''"/>
+                        </if>
 
                         <set field="longDescLocation" from="contentList.find({'PcntDescriptionLong' == 
                         it.productContentTypeEnumId})?.contentLocation"/>
@@ -109,7 +112,7 @@ along with this software (see the LICENSE.md file). If not, see
                     <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + '/' + productId"/>
                 
                     <set field="item" from="[url:productDetailBaseUrl, name:orderItem.itemDescription, 
-                        image:productImageBaseUrl ? productImageBaseUrl : productStore.storeDomain + '/' + productImageLocation.settingValue, description: descriptionLong ? descriptionLong : '', 
+                        image:productImageBaseUrl, description: descriptionLong ? descriptionLong : '', 
                         price:orderItem.unitAmount, 
                         specs:[sku:orderItem.productId], product_tags:product.comments]"/>
                     <script>productsList.put(orderItem.productId, item)</script>
@@ -170,9 +173,7 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
-            <if condition="yotPoConfig == null">
-                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
-            </if>
+            <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
             <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
             <if condition="product == null"><return message="No product found with ID ${productId}"/></if>
@@ -203,8 +204,9 @@ along with this software (see the LICENSE.md file). If not, see
                 <econdition field-name="productStoreId" from="productStoreId"/>
                 <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
             </entity-find-one>
-            <if condition="productImageLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
+            <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
             
+            <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue"/>
             <if condition="contentList != null">
                 <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
                 <if condition="imageDetail == null">
@@ -213,7 +215,9 @@ along with this software (see the LICENSE.md file). If not, see
                         <set field="imageDetail" from="contentList.find({'PcntImageSmall' == it.productContentTypeEnumId})"/>
                     </if>
                 </if>
-                <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue + '/' + imageDetail.productContentId ? imageDetail.productContentId : ''"/>
+                <if condition="imageDetail != null">
+                    <set field="productImageBaseUrl" from="productImageBaseUrl + '/' + imageDetail.productContentId ? imageDetail.productContentId : ''"/>
+                </if>
 
                 <set field="longDescLocation" from="contentList.find({'PcntDescriptionLong' == it.productContentTypeEnumId})?.contentLocation"/>
 
@@ -225,8 +229,8 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + '/' + productId"/>
            
             <set field="item" from="[name:product.productName, url:productDetailBaseUrl, 
-                image_url:productImageBaseUrl ? productImageBaseUrl : productStore.storeDomain + '/' + productImageLocation.settingValue, 
-                description:descriptionLong ? descriptionLong : '', currency:priceUomId ? priceUomId : 'USD', price:price, 
+                image_url:productImageBaseUrl, description:descriptionLong ? descriptionLong : '', 
+                currency:priceUomId ? priceUomId : 'USD', price:price, 
                 product_tags:product.comments, specs:[sku:productId]]"/>
             
             <set field="productMap" type="NewMap" value="null"/>
@@ -260,12 +264,18 @@ along with this software (see the LICENSE.md file). If not, see
             <parameter name="productStoreId" required="true"/>
         </in-parameters>
         <out-parameters>
-            <parameter name="responseMap"/>
+            <parameter name="responseList"/>
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
                 <field-map field-name="productStoreId"/></entity-find-one>
             <if condition="productStore == null"><return message="No productStore found with productStoreId ${productStoreId}"/></if>
+
+            <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
+            <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
+
+            <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
+            <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreCategory" value-field="productStoreCategory">
                 <econdition field-name="productStoreId" from="productStoreId"/>
@@ -282,12 +292,15 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="productCategoryId" from="productStoreCategory.productCategoryId"/>
 
             <entity-find entity-name="mantle.product.category.ProductCategoryMember" list="productList" cache="true">
-                <search-form-inputs default-order-by="${orderBy}"/>
                 <date-filter/><econdition field-name="productCategoryId"/>
             </entity-find>
+            
+            <!--<service-call name="YotPo.YotPoServices.create#Product" in-map="[productId:product.productId, productStoreId:productStoreId]" out-map="responseMap"/>-->
+            <set field="responseList" from="[]"/>
             <iterate list="productList" entry="product">
                 <service-call name="YotPo.YotPoServices.create#Product" in-map="[productId:product.productId, productStoreId:productStoreId]" out-map="responseMap"/>
-            </iterate>
+                <script>responseList.add(responseMap)</script>
+            </iterate> 
         </actions>
     </service>
 
@@ -309,9 +322,7 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
-            <if condition="yotPoConfig == null">
-                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
-            </if>
+            <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
             <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
             <if condition="product == null"><return message="No product found with ID ${productId}"/></if>
@@ -337,14 +348,14 @@ along with this software (see the LICENSE.md file). If not, see
                 <econdition field-name="productStoreId" from="productStoreId"/>
                 <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
             </entity-find-one>
-            <if condition="productImageLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
+            <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
             <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
             <if condition="token.token.access_token == null">
                 <return error="true" message="Error with YotPo Access Token."/>
             </if>
             <set field="uToken" from="token.token.access_token"/>
-
+            <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue"/>
             <if condition="contentList != null">
                 <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
                 <if condition="imageDetail == null">
@@ -353,8 +364,10 @@ along with this software (see the LICENSE.md file). If not, see
                         <set field="imageDetail" from="contentList.find({'PcntImageSmall' == it.productContentTypeEnumId})"/>
                     </if>
                 </if>
-                <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue + '/' + imageDetail.productContentId ? imageDetail.productContentId : ''"/>
-
+                <if condition="imageDetail != null">
+                    <set field="productImageBaseUrl" from="productImageBaseUrl + '/' + imageDetail.productContentId ? imageDetail.productContentId : ''"/>
+                </if>
+                
                 <set field="longDescLocation" from="contentList.find({'PcntDescriptionLong' == it.productContentTypeEnumId})?.contentLocation"/>
 
                 <if condition="longDescLocation">
@@ -364,9 +377,8 @@ along with this software (see the LICENSE.md file). If not, see
 
             <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + '/' + productId"/>
 
-
             <set field="item" from="[name:product.productName, url:productDetailBaseUrl, 
-                image_url:productImageBaseUrl ? productImageBaseUrl : productStore.storeDomain + '/' + productImageLocation.settingValue, description:descriptionLong ? descriptionLong : '', 
+                image_url:productImageBaseUrl, description:descriptionLong ? descriptionLong : '', 
                 currency:priceUomId ? priceUomId : 'USD', price:price, 
                 product_tags:product.comments, specs:[sku:productId]]"/>
             
@@ -432,7 +444,7 @@ along with this software (see the LICENSE.md file). If not, see
                 <econdition field-name="productStoreId" from="productStoreId"/>
                 <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
             </entity-find-one>
-            <if condition="productImageLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
+            <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
             <set field="priceUomId" from="productStore?.defaultCurrencyUomId"/>
             <service-call name="mantle.product.PriceServices.get#ProductPrice" out-map="priceMap"
@@ -454,7 +466,7 @@ along with this software (see the LICENSE.md file). If not, see
 
             <set field="organizationName" from="partyDetail.organizationName ? partyDetail.organizationName : ''"/>
             <set field="customerName" from="partyDetail.firstName + ' ' + partyDetail.lastName + ' ' + organizationName"/>
-
+            <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue"/>
             <if condition="contentList != null">
                 <set field="imageDetail" from="contentList.find({'PcntImageDetail' == it.productContentTypeEnumId})"/>
                 <if condition="imageDetail == null">
@@ -463,7 +475,9 @@ along with this software (see the LICENSE.md file). If not, see
                         <set field="imageDetail" from="contentList.find({'PcntImageSmall' == it.productContentTypeEnumId})"/>
                     </if>
                 </if>
-                <set field="productImageBaseUrl" from="productStore.storeDomain + '/' + productImageLocation.settingValue + '/' + imageDetail.productContentId ? imageDetail.productContentId : ''"/>
+                <if condition="imageDetail != null">
+                    <set field="productImageBaseUrl" from="productImageBaseUrl + '/' + imageDetail.productContentId ? imageDetail.productContentId : ''"/>
+                </if>
 
                 <set field="longDescLocation" from="contentList.find({'PcntDescriptionLong' == it.productContentTypeEnumId})?.contentLocation"/>
 
@@ -478,9 +492,7 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
-            <if condition="yotPoConfig == null">
-                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
-            </if>
+            <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
             <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
             <if condition="token.token.access_token == null">
@@ -490,7 +502,7 @@ along with this software (see the LICENSE.md file). If not, see
 
             <set field="requestMap" from="[appkey:yotPoConfig.clientId, domain:productStore.storeDomain, sku:productId,
                 product_title:product.productName, product_description:descriptionLong ? descriptionLong : '', 
-                product_url:productDetailBaseUrl, product_image_url:productImageBaseUrl ? productImageBaseUrl : productStore.storeDomain + '/' + productImageLocation.settingValue, display_name:customerName, email:email, review_content:reviewContent,
+                product_url:productDetailBaseUrl, product_image_url:productImageBaseUrl, display_name:customerName, email:email, review_content:reviewContent,
                 review_title:reviewTitle, review_score:reviewScore, time_stamp:timeStamp]" />
             <!-- Path only for tests 
                 .path("reviews")path("dynamic_create")
@@ -536,9 +548,7 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
-            <if condition="yotPoConfig == null">
-                <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
-            </if>
+            <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
             <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="token"/>
             <if condition="token.token.access_token == null">
@@ -576,9 +586,7 @@ along with this software (see the LICENSE.md file). If not, see
         <actions>
             <if condition="yotPoConfig == null">
                 <entity-find-one entity-name="YotPo.YotPoConfiguration"  value-field="yotPoConfig"/>
-                <if condition="yotPoConfig == null">
-                    <return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/>
-                </if>
+                <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
             </if>
             
             <set field="requestMap" from="[client_id:yotPoConfig.clientId, 
