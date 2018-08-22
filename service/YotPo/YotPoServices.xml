@@ -109,7 +109,7 @@ along with this software (see the LICENSE.md file). If not, see
                         </if>
                     </if>
                     
-                    <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + '/' + productId"/>
+                    <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + productId"/>
                 
                     <set field="item" from="[url:productDetailBaseUrl, name:orderItem.itemDescription, 
                         image:productImageBaseUrl, description: descriptionLong ? descriptionLong : '', 
@@ -226,7 +226,7 @@ along with this software (see the LICENSE.md file). If not, see
                 </if>
             </if>
 
-            <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + '/' + productId"/>
+            <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + productId"/>
            
             <set field="item" from="[name:product.productName, url:productDetailBaseUrl, 
                 image_url:productImageBaseUrl, description:descriptionLong ? descriptionLong : '', 
@@ -378,7 +378,7 @@ along with this software (see the LICENSE.md file). If not, see
                 </if>
             </if>
 
-            <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + '/' + productId"/>
+            <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + productId"/>
 
             <set field="item" from="[name:product.productName, url:productDetailBaseUrl, 
                 image_url:productImageBaseUrl, description:descriptionLong ? descriptionLong : '', 
@@ -489,7 +489,7 @@ along with this software (see the LICENSE.md file). If not, see
                 </if>
             </if>
 
-            <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + '/' + productId"/>
+            <set field="productDetailBaseUrl" from="productStore.storeDomain + productDetailLocation.settingValue + productId"/>
 
             <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
             <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
@@ -578,7 +578,7 @@ along with this software (see the LICENSE.md file). If not, see
         </actions>
     </service>
 
-    <service verb="login" noun="YotPo">
+    <service verb="login" noun="YotPo" require-authentication="anonymous-view">
         <in-parameters>
             <parameter name="yotPoConfigId"/>
             <parameter name="yotPoConfig" type="Map"/>
