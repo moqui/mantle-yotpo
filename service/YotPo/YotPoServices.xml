@@ -69,14 +69,14 @@ along with this software (see the LICENSE.md file). If not, see
             <script>productsList = new HashMap()</script>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productImageLocation">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="settingTypeEnumId" from="'PsstProductImageLoc'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="PsstProductImageLoc"/>
             </entity-find-one>
             <if condition="productImageLocation == null"><return message="No productImageLocation found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productDetailLocation">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="PsstProductDetailLoc"/>
             </entity-find-one>
             <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
@@ -195,14 +195,14 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="uToken" from="response.token.access_token"/>
           
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productImageLocation">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="settingTypeEnumId" from="'PsstProductImageLoc'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="PsstProductImageLoc"/>
             </entity-find-one>
             <if condition="productImageLocation == null"><return message="No productImageLocation found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productDetailLocation">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="PsstProductDetailLoc"/>
             </entity-find-one>
             <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
             
@@ -280,13 +280,13 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreCategory" value-field="productStoreCategory">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="storeCategoryTypeEnumId" from="'PsctSearch'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="storeCategoryTypeEnumId" value="PsctSearch"/>
             </entity-find-one>
             <if condition="productStoreCategory == null">
                 <entity-find-one entity-name="mantle.product.store.ProductStoreCategory" value-field="productStoreCategory">
-                    <econdition field-name="productStoreId" from="productStoreId"/>
-                    <econdition field-name="storeCategoryTypeEnumId" from="'PsctViewAllow'"/>
+                    <field-map field-name="productStoreId" from="productStoreId"/>
+                    <field-map field-name="storeCategoryTypeEnumId" value="PsctViewAllow"/>
                 </entity-find-one>
                 <if condition="productStoreCategory == null"><return message="No productStoreCategory found with productStoreId ${productStoreId}"/></if>
             </if>
@@ -341,14 +341,14 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="price" from="priceMap.price"/>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productImageLocation">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="settingTypeEnumId" from="'PsstProductImageLoc'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="PsstProductImageLoc"/>
             </entity-find-one>
             <if condition="productImageLocation == null"><return message="No productImageLocation found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productDetailLocation">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="PsstProductDetailLoc"/>
             </entity-find-one>
             <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
@@ -438,14 +438,14 @@ along with this software (see the LICENSE.md file). If not, see
             </entity-find>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productImageLocation">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="settingTypeEnumId" from="'PsstProductImageLoc'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="PsstProductImageLoc"/>
             </entity-find-one>
             <if condition="productImageLocation == null"><return message="No productImageLocation found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="mantle.product.store.ProductStoreSetting" value-field="productDetailLocation">
-                <econdition field-name="productStoreId" from="productStoreId"/>
-                <econdition field-name="settingTypeEnumId" from="'PsstProductDetailLoc'"/>
+                <field-map field-name="productStoreId" from="productStoreId"/>
+                <field-map field-name="settingTypeEnumId" value="PsstProductDetailLoc"/>
             </entity-find-one>
             <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
@@ -517,7 +517,7 @@ along with this software (see the LICENSE.md file). If not, see
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
                         .addHeader("Content-Type", "application/json").jsonObject(requestMap)
                 restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
-                        .path("reviews")path("dynamic_create").build()
+                        .path("reviews").path("dynamic_create").build()
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                     
                 if (restResponse.statusCode != 200) {
@@ -578,7 +578,7 @@ along with this software (see the LICENSE.md file). If not, see
         </actions>
     </service>
 
-    <service verb="login" noun="YotPo" require-authentication="anonymous-view">
+    <service verb="login" noun="YotPo" authenticate="anonymous-view">
         <in-parameters>
             <parameter name="yotPoConfigId"/>
             <parameter name="yotPoConfig" type="Map"/>
