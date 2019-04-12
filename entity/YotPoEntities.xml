@@ -28,7 +28,7 @@ along with this software (see the LICENSE.md file). If not, see
         </field>
     </entity>
     <!-- The yotPoConfigId field is added to the store entity -->
-    <extend-entity entity-name="ProductStore" package-name="mantle.product.store">
+    <extend-entity entity-name="ProductStore" package="mantle.product.store">
         <field name="yotPoConfigId" type="text-medium" encrypt="true"/>
     </extend-entity>
 </entities>
