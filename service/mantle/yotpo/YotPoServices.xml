@@ -122,7 +122,7 @@ along with this software (see the LICENSE.md file). If not, see
             <log level="warn" message="YotPo Order requestMap:\n${requestMap}"/>
 
             <!--
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <service-call name="mantle.yotpo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
             <if condition="response.token.access_token == null">
                 <return error="true" message="Could not get YotPo Access Token"/>
             </if>
@@ -171,7 +171,7 @@ along with this software (see the LICENSE.md file). If not, see
                 </entity-find-count>
 
                 <if condition="storeProdCount">
-                    <service-call name="YotPo.YotPoServices.update#StoreProduct" in-map="[productId:productId, productStoreId:productStore.productStoreId]"/>
+                    <service-call name="mantle.yotpo.YotPoServices.update#StoreProduct" in-map="[productId:productId, productStoreId:productStore.productStoreId]"/>
                 </if>
             </iterate>
         </actions>
@@ -249,7 +249,7 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="requestMap" from="[products:[(productId):item]]"/>
 
             <!--
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <service-call name="mantle.yotpo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
             <if condition="response.token.access_token == null">
                 <return error="true" message="Error with YotPo Access Token."/>
             </if>
@@ -314,10 +314,10 @@ along with this software (see the LICENSE.md file). If not, see
                 <date-filter/><econdition field-name="productCategoryId"/>
             </entity-find>
             
-            <!--<service-call name="YotPo.YotPoServices.create#Product" in-map="[productId:product.productId, productStoreId:productStoreId]" out-map="responseMap"/>-->
+            <!--<service-call name="mantle.yotpo.YotPoServices.create#Product" in-map="[productId:product.productId, productStoreId:productStoreId]" out-map="responseMap"/>-->
             <set field="responseList" from="[]"/>
             <iterate list="productList" entry="product">
-                <service-call name="YotPo.YotPoServices.create#Product" in-map="[productId:product.productId, productStoreId:productStoreId]" out-map="responseMap"/>
+                <service-call name="mantle.yotpo.YotPoServices.create#Product" in-map="[productId:product.productId, productStoreId:productStoreId]" out-map="responseMap"/>
                 <script>responseList.add(responseMap)</script>
             </iterate> 
         </actions>
@@ -369,7 +369,7 @@ along with this software (see the LICENSE.md file). If not, see
             </entity-find-one>
             <if condition="productDetailLocation == null"><return message="No productDetailLocation found with productStoreId ${productStoreId}"/></if>
 
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <service-call name="mantle.yotpo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
             <if condition="response.token.access_token == null">
                 <return error="true" message="Error with YotPo Access Token."/>
             </if>
@@ -514,7 +514,7 @@ along with this software (see the LICENSE.md file). If not, see
             <entity-find-one entity-name="mantle.yotpo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <service-call name="mantle.yotpo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
             <if condition="response.token.access_token == null">
                 <return error="true" message="Error with Access Token."/>
             </if>
@@ -569,7 +569,7 @@ along with this software (see the LICENSE.md file). If not, see
             <entity-find-one entity-name="mantle.yotpo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
 
-            <service-call name="YotPo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
+            <service-call name="mantle.yotpo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
             <if condition="response.token.access_token == null">
                 <return error="true" message="Error with Access Token."/>
             </if>
