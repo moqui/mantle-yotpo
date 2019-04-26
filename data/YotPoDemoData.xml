@@ -37,4 +37,10 @@ along with this software (see the LICENSE.md file). If not, see
     -->
 	<mantle.yotpo.YotPoConfiguration yotPoConfigId="YotPoDemo" apiVersion="v1" hostName="api.yotpo.com"
 			clientId="" clientSecret="" platform="general" validateData="Y"/>
+	<mantle.product.store.ProductStore productStoreId="POPC_DEFAULT" yotPoConfigId="YotPoDemo"/>
+	<!-- NOTE: PsstProductDetailLoc is required as YotPo requires a product URL -->
+	<mantle.product.store.ProductStoreSetting productStoreId="POPC_DEFAULT" settingTypeEnumId="PsstProductDetailUrl" fromDate="0"
+			settingValue="https://${storeDomain}/store/product/${productId}"/>
+	<mantle.product.store.ProductStoreSetting productStoreId="POPC_DEFAULT" settingTypeEnumId="PsstProductImageUrl" fromDate="0"
+			settingValue="https://${storeDomain}/store/content/productImage/${productContentId}"/>
 </entity-facade-xml>

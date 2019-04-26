@@ -16,10 +16,10 @@ along with this software (see the LICENSE.md file). If not, see
     <!-- when order Completed (at least partially shipped) send order info to YotPo -->
     <seca id="YotPoOrderCompletedSendOrder" service="update#mantle.order.OrderHeader" when="post-service">
         <condition><expression>statusChanged &amp;&amp; statusId == 'OrderCompleted'</expression></condition>
-        <actions><service-call name="mantle.yotpo.YotPoServices.create#Order" in-map="context"/></actions>
+        <actions><service-call name="mantle.yotpo.YotPoServices.create#Order" in-map="context" async="true"/></actions>
     </seca>
     <!-- when Product updated send latest data to YotPo for each ProductStore with YotPo config and has the product in a configured category on the store -->
     <seca id="YotPoProductUpdateSendProduct" service="update#mantle.product.Product" when="post-service">
-        <actions><service-call name="mantle.yotpo.YotPoServices.update#Product" in-map="context"/></actions>
+        <actions><service-call name="mantle.yotpo.YotPoServices.update#Product" in-map="context" async="true"/></actions>
     </seca>
 </secas>
