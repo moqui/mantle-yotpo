@@ -33,8 +33,8 @@ along with this software (see the LICENSE.md file). If not, see
                 WP eCommerce           wp_ecommerce
                 Zepo                   zepo
                 Any other platform     general
+		Also see: https://apidocs.yotpo.com/reference#set-the-ecommerce-platform-that-this-account-integ
     -->
-	<YotPo.YotPoConfiguration yotPoConfigId="YotPoDemo" apiVersion="v1"
-		hostName="api.yotpo.com" clientId="" 
-		clientSecret="" platform="general"/>
+	<mantle.yotpo.YotPoConfiguration yotPoConfigId="YotPoDemo" apiVersion="v1" hostName="api.yotpo.com"
+			clientId="" clientSecret="" platform="general" validateData="Y"/>
 </entity-facade-xml>
