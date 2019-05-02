@@ -17,10 +17,8 @@ along with this software (see the LICENSE.md file). If not, see
         <field name="yotPoConfigId" type="id" is-pk="true"/>
         <field name="hostName" type="text-medium"><description>Transaction Host Name (api.yotpo.com)</description></field>
         <field name="apiVersion" type="text-short"><description>Target YotPo API version</description></field>
-        <field name="clientId" type="text-medium" encrypt="true">
-            <description>The app_key that was received on user signup in YOTPO</description></field>
-        <field name="clientSecret" type="text-medium" encrypt="true">
-            <description>The secret that was received on user signup in YOTPO</description></field>
+        <field name="clientId" type="text-medium" encrypt="true"><description>App Key assigned by YotPo</description></field>
+        <field name="clientSecret" type="text-medium" encrypt="true"><description>App Secret assigned by YotPo</description></field>
         <field name="platform" type="text-medium"><description>e-Commerce Platform from YOTPO</description></field>
         <field name="validateData" type="text-indicator"/>
     </entity>

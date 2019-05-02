@@ -35,6 +35,8 @@ along with this software (see the LICENSE.md file). If not, see
                 Any other platform     general
 		Also see: https://apidocs.yotpo.com/reference#set-the-ecommerce-platform-that-this-account-integ
     -->
+	<!-- set 'clientId' to the value of the "App Key" on Account Settings => Store under API Credentials -->
+	<!-- set 'clientSecret' to the value of the "Secret Key" on Account Settings => Store under API Credentials (must have admin account to see) -->
 	<mantle.yotpo.YotPoConfiguration yotPoConfigId="YotPoDemo" apiVersion="v1" hostName="api.yotpo.com"
 			clientId="" clientSecret="" platform="general" validateData="Y"/>
 	<mantle.product.store.ProductStore productStoreId="POPC_DEFAULT" yotPoConfigId="YotPoDemo"/>

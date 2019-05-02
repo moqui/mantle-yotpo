@@ -164,8 +164,11 @@ along with this software (see the LICENSE.md file). If not, see
                     customer_name:customerName,order_date:placedDateStr, order_id:orderId, currency_iso:orderHeader.currencyUomId,
                     products:productsList]"/>
 
+            <!-- TODO: remove this log, for review in production in first deployment -->
+            <log message="YotPo Order ${orderId} requestMap:\n${requestMap}"/>
+
             <if condition="!yotPoConfig.clientId">
-                <log level="warn" message="YotPo clientId not set, Order requestMap:\n${requestMap}"/>
+                <log level="warn" message="YotPo clientId not set, Order ${orderId} requestMap:\n${requestMap}"/>
                 <return/>
             </if>
 
@@ -179,17 +182,18 @@ along with this software (see the LICENSE.md file). If not, see
                 org.moqui.util.RestClient restClient = ec.service.rest().method("POST")
                         .addHeader("Content-Type", "application/json").jsonObject(requestMap)
                 restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
-                        .path("apps").path("${yotPoConfig.clientId}").path("purchases").build()
+                        .path("apps").path(yotPoConfig.clientId).path("purchases").build()
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
             
                 if (restResponse.statusCode != 200) {
-                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
-                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    ec.logger.error("YotPo Order ${orderId} Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}", "danger")
                     return
                 }
 
                 responseMap = restResponse.jsonObject()
             ]]></script>
+            <message type="success">YotPo order successful (ID ${orderId})</message>
         </actions>
     </service>
     
@@ -252,10 +256,13 @@ along with this software (see the LICENSE.md file). If not, see
                     image_url:prodData.imageUrl, description:prodData.description,
                     currency:prodData.priceUomId, price:prodData.priceString, specs:prodData.specs]"/>
             <!-- NOTE: had product_tags:product.comments, based on YotPo definition of tags and their constraints (single word, no commas) this would be very bad -->
-            <set field="requestMap" from="[products:[(productId):itemMap], app_key:yotPoConfig.clientId]"/>
+            <set field="requestMap" from="[products:[(productId):itemMap]]"/>
+
+            <!-- TODO: remove this log, for review in production in first deployment -->
+            <log message="YotPo Product ${productId} requestMap:\n${requestMap}"/>
 
             <if condition="!yotPoConfig.clientId">
-                <log level="warn" message="YotPo clientId not set, Product requestMap:\n${requestMap}"/>
+                <log level="warn" message="YotPo clientId not set, Product ${productId} requestMap:\n${requestMap}"/>
                 <return/>
             </if>
 
@@ -269,18 +276,17 @@ along with this software (see the LICENSE.md file). If not, see
                 org.moqui.util.RestClient restClient = ec.service.rest().method("PUT")
                         .addHeader("Content-Type", "application/json").jsonObject(requestMap)
                 restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
-                        .path("apps").path("${yotPoConfig.clientId}").path("products").path("mass_update").build()
+                        .path("apps").path(yotPoConfig.clientId).path("products").path("mass_update").build()
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                     
                 if (restResponse.statusCode != 200) {
-                    ec.logger.error("YotPo API Response ${restResponse.statusCode}")
-                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
+                    ec.logger.error("YotPo Product ${productId} Response ${restResponse.statusCode} ${restResponse.reasonPhrase}: ${restResponse.text()}")
+                    ec.message.addMessage("YotPo API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}", "danger")
                     return
                 }
-
-                responseMap = restResponse.jsonObject()
-
+                // responseMap = restResponse.jsonObject()
             ]]></script>
+            <message type="success">YotPo product update successful (ID ${productId})</message>
         </actions>
     </service>
     
@@ -331,8 +337,6 @@ along with this software (see the LICENSE.md file). If not, see
             </iterate> 
         </actions>
     </service>
-
-
     <service verb="create" noun="StoreProduct">
         <in-parameters>
             <parameter name="productId" required="true"/>
@@ -375,7 +379,7 @@ along with this software (see the LICENSE.md file). If not, see
                 org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.POST)
                         .addHeader("Content-Type", "application/json").jsonObject(requestMap)
                 restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
-                        .path("apps").path("${yotPoConfig.clientId}").path("products").path("mass_create").build()
+                        .path("apps").path(yotPoConfig.clientId).path("products").path("mass_create").build()
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                     
                 if (restResponse.statusCode != 200) {
@@ -480,7 +484,7 @@ along with this software (see the LICENSE.md file). If not, see
         <in-parameters>
             <parameter name="productId" required="true"/>
             <parameter name="productStoreId" required="true"/>
-            <parameter name="perPage" required="true"><description>Number of reviews per page</description></parameter>
+            <parameter name="perPage" type="Integer" default="10"><description>Number of reviews per page</description></parameter>
         </in-parameters>
         <out-parameters>
             <parameter name="responseMap"/>
@@ -503,11 +507,11 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="uToken" from="response.token.access_token"/>
 
             <script><![CDATA[
-                org.moqui.util.RestClient restClient = ec.service.rest().method(org.moqui.util.RestClient.GET)
+                org.moqui.util.RestClient restClient = ec.service.rest().method("GET")
                 restClient.uri().protocol("https").host(yotPoConfig.hostName ?: "api.yotpo.com").port(443)
-                        .path("${yotPoConfig.apiVersion}").path("widget").path("${yotPoConfig.clientId}")
-                        .path("products").path("${productId}").path("reviews.json")
-                        .parameter("per_page", "${perPage}").build()
+                        .path(yotPoConfig.apiVersion).path("widget").path(yotPoConfig.clientId)
+                        .path("products").path(productId).path("reviews.json")
+                        .parameter("per_page", perPage as String).build()
                 org.moqui.util.RestClient.RestResponse restResponse = restClient.call()
                     
                 if (restResponse.statusCode != 200) {
@@ -552,6 +556,7 @@ along with this software (see the LICENSE.md file). If not, see
                 }
 
                 token = restResponse.jsonObject()
+                // ec.logger.warn("${token}")
 
                 if(token.status != null || token.error != null) {
                     ec.logger.error("YotPo API Error Response ${token.status != null ? token.status.code : token.error}")
