@@ -410,18 +410,18 @@ along with this software (see the LICENSE.md file). If not, see
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
-                <field-map field-name="productStoreId"/></entity-find-one>
+                <field-map field-name="productStoreId" from="productStoreId"/></entity-find-one>
             <if condition="productStore == null"><return message="No productStore found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
             <if condition="product == null"><return message="No product found with ID ${productId}"/></if>
 
-            <service-call name="mantle.party.ContactServices.get#PartyContactInfo" out-map="emailInfo"
-                in-map="[partyId:customerPartyId, emailContactMechPurposeId:true]"/>
-            <set field="email" from="emailInfo.emailAddress"/>
-            <if condition="email == null">
-                <return message="The client's email was not found with customerPartyId ${customerPartyId}"/>
+            <service-call name="popstore.CustomerServices.get#CustomerInfo" out-map="customer"/>
+            <if condition="customer == null">
+                <return message="The current user was not found."/>
             </if>
+            <set field="email" from="customer.emailAddress"/>
+            <set field="customerName" from="customer.firstName + ' ' + customer.lastName"/>
 
             <entity-find-one entity-name="mantle.party.PartyDetail" value-field="partyDetail">
                 <field-map field-name="partyId" from="customerPartyId"/>
@@ -429,7 +429,7 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="partyDetail == null"><return message="No partyDetail found with partyId ${customerPartyId}"/></if>
 
             <set field="organizationName" from="partyDetail.organizationName ? partyDetail.organizationName : ''"/>
-            <set field="customerName" from="partyDetail.firstName + ' ' + partyDetail.lastName + ' ' + organizationName"/>
+            <!-- <set field="customerName" from="partyDetail.firstName + ' ' + partyDetail.lastName + ' ' + organizationName"/> -->
 
             <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
             <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
@@ -441,14 +441,16 @@ along with this software (see the LICENSE.md file). If not, see
                     in-map="[productId:productId, productStoreId:productStoreId]"/>
             <if condition="!prodData.detailUrl || !prodData.name">
                 <log message="YotPo product ${productId} store ${productStoreId} data: ${prodData}"/>
-                <return type="danger" message="Not sending review, could not find product ${productId} detail URL or name for store ${productStoreId}"/>
+                <return type="danger" message="Not sending review, could not find product ${productId} detail URL or name for store ${storeId}"/>
             </if>
 
+
             <set field="requestMap" from="[appkey:yotPoConfig.clientId, domain:productStore.storeDomain, sku:productId,
-                    product_title:prodData.name, product_description:prodData.description,
+                    product_title:prodData.name, product_description:'descipcion',
                     product_url:prodData.detailUrl, product_image_url:prodData.imageUrl,
                     display_name:customerName, email:email, review_content:reviewContent,
                     review_title:reviewTitle, review_score:reviewScore, time_stamp:timeStamp]" />
+            <log message="xxxxxxxx ${requestMap}"/>
 
             <service-call name="mantle.yotpo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
             <if condition="response.token.access_token == null">
@@ -483,6 +485,7 @@ along with this software (see the LICENSE.md file). If not, see
     <service verb="get" noun="ReviewByProduct">
         <in-parameters>
             <parameter name="productId" required="true"/>
+            <parameter name="storeId" required="true"/>
             <parameter name="productStoreId" required="true"/>
             <parameter name="perPage" type="Integer" default="10"><description>Number of reviews per page</description></parameter>
         </in-parameters>
@@ -491,11 +494,11 @@ along with this software (see the LICENSE.md file). If not, see
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
-                <field-map field-name="productStoreId"/></entity-find-one>
-            <if condition="productStore == null"><return message="No productStore found with productStoreId ${productStoreId}"/></if>
+                <field-map field-name="productStoreId" from="storeId"/></entity-find-one>
+            <if condition="productStore == null"><return message="No productStore found with productStoreId ${storeId}"/></if>
 
             <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
-            <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
+            <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${storeId}"/></if>
 
             <entity-find-one entity-name="mantle.yotpo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
