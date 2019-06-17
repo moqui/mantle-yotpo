@@ -528,6 +528,37 @@ along with this software (see the LICENSE.md file). If not, see
         </actions>
     </service>
 
+    <service verb="get" noun="CanUserMakereview">
+        <in-parameters>
+            
+        </in-parameters>
+        <out-parameters>
+            <parameter name="userHasPermission"/>
+        </out-parameters>
+        <actions>
+            <set field="userHasPermission" from="false"/>
+            <if condition="ec.user.userAccount != null">
+                <entity-find entity-name="mantle.order.OrderHeaderAndPart" list="orderList" distinct="true">
+                    <econdition field-name="customerPartyId" from="ec.user.userAccount.partyId"/>
+                    <econdition field-name="statusId" value="OrderPlaced"/>
+                    <select-field field-name="orderId" />
+                </entity-find>
+            
+                <iterate list="orderList" entry="order">
+                    <service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:order.orderId]"
+                        out-map="orderInfo"/>
+
+                    <iterate list="orderInfo.orderItemList" entry="orderItem">
+                        <if condition="orderItem.productId == productId">
+                            <set field="userHasPermission" from="true"/>
+                            <return />
+                        </if> 
+                    </iterate>     
+                </iterate>
+            </if>
+        </actions>
+    </service>
+
     <service verb="login" noun="YotPo" authenticate="anonymous-view">
         <in-parameters>
             <parameter name="yotPoConfigId"/>
