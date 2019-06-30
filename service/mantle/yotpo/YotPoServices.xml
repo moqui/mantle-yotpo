@@ -15,7 +15,35 @@ along with this software (see the LICENSE.md file). If not, see
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
 
     <!-- These services are based on the YotPo API, version 1. See: https://apidocs.yotpo.com/reference#general-information -->
+    <service verb="get" noun="HasPurchased">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="hasPurchased"/>
+        </out-parameters>
+        <actions>
+            <set field="hasPurchased" from="false"/>
+            <if condition="ec.user.userAccount == null"><return /></if>
+            <entity-find entity-name="mantle.order.OrderHeaderAndPart" list="orderList" distinct="true">
+                <econdition field-name="customerPartyId" from="ec.user.userAccount.partyId"/>
+                <econdition field-name="statusId" value="OrderPlaced"/>
+                <select-field field-name="orderId" />
+            </entity-find>
 
+            <iterate list="orderList" entry="order">
+                <service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:order.orderId]"
+                    out-map="orderInfo"/>
+
+                <iterate list="orderInfo.orderItemList" entry="orderItem">
+                    <if condition="orderItem.productId == productId">
+                        <set field="hasPurchased" from="true"/>
+                        <return />
+                    </if>
+                </iterate>
+            </iterate>
+        </actions>
+    </service>
     <service verb="get" noun="YotPoProductData">
         <in-parameters>
             <parameter name="productId" required="true"/>
