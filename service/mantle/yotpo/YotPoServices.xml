@@ -28,7 +28,7 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="ec.user.userAccount == null"><return /></if>
             <entity-find entity-name="mantle.order.OrderHeaderAndPart" list="orderList" distinct="true">
                 <econdition field-name="customerPartyId" from="ec.user.userAccount.partyId"/>
-                <econdition field-name="statusId" value="OrderPlaced"/>
+                <econdition field-name="statusId" operator="not-in" value="OrderHold,OrderRejected,OrderCancelled"/>
                 <econdition field-name="productStoreId" />
                 <select-field field-name="orderId" />
             </entity-find>
