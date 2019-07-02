@@ -2,12 +2,10 @@
 <!--
 This software is in the public domain under CC0 1.0 Universal plus a 
 Grant of Patent License.
-
 To the extent possible under law, the author(s) have dedicated all
 copyright and related and neighboring rights to this software to the
 public domain worldwide. This software is distributed without any
 warranty.
-
 You should have received a copy of the CC0 Public Domain Dedication
 along with this software (see the LICENSE.md file). If not, see
 <http://creativecommons.org/publicdomain/zero/1.0/>.
@@ -15,7 +13,37 @@ along with this software (see the LICENSE.md file). If not, see
 <services xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://moqui.org/xsd/service-definition-2.1.xsd">
 
     <!-- These services are based on the YotPo API, version 1. See: https://apidocs.yotpo.com/reference#general-information -->
+    <service verb="get" noun="HasPurchased">
+        <in-parameters>
+            <parameter name="productId" required="true"/>
+            <parameter name="productStoreId" required="true"/>
+        </in-parameters>
+        <out-parameters>
+            <parameter name="hasPurchased"/>
+        </out-parameters>
+        <actions>
+            <set field="hasPurchased" from="false"/>
+            <if condition="ec.user.userAccount == null"><return /></if>
+            <entity-find entity-name="mantle.order.OrderHeaderAndPart" list="orderList" distinct="true">
+                <econdition field-name="customerPartyId" from="ec.user.userAccount.partyId"/>
+                <econdition field-name="statusId" operator="not-in" value="OrderHold,OrderRejected,OrderCancelled"/>
+                <econdition field-name="productStoreId" />
+                <select-field field-name="orderId" />
+            </entity-find>
 
+            <iterate list="orderList" entry="order">
+                <service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:order.orderId]"
+                    out-map="orderInfo"/>
+
+                <iterate list="orderInfo.orderItemList" entry="orderItem">
+                    <if condition="orderItem.productId == productId">
+                        <set field="hasPurchased" from="true"/>
+                        <return />
+                    </if>
+                </iterate>
+            </iterate>
+        </actions>
+    </service>
     <service verb="get" noun="YotPoProductData">
         <in-parameters>
             <parameter name="productId" required="true"/>
@@ -190,7 +218,6 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}", "danger")
                     return
                 }
-
                 responseMap = restResponse.jsonObject()
             ]]></script>
             <message type="success">YotPo order successful (ID ${orderId})</message>
@@ -387,9 +414,7 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
                     return
                 }
-
                 responseMap = restResponse.jsonObject()
-
             ]]></script>
         </actions>
     </service>
@@ -410,18 +435,18 @@ along with this software (see the LICENSE.md file). If not, see
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
-                <field-map field-name="productStoreId" from="productStoreId"/></entity-find-one>
+                <field-map field-name="productStoreId"/></entity-find-one>
             <if condition="productStore == null"><return message="No productStore found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="mantle.product.Product" value-field="product"/>
             <if condition="product == null"><return message="No product found with ID ${productId}"/></if>
 
-            <service-call name="popstore.CustomerServices.get#CustomerInfo" out-map="customer"/>
-            <if condition="customer == null">
-                <return message="The current user was not found."/>
+            <service-call name="mantle.party.ContactServices.get#PartyContactInfo" out-map="emailInfo"
+                in-map="[partyId:customerPartyId, emailContactMechPurposeId:true]"/>
+            <set field="email" from="emailInfo.emailAddress"/>
+            <if condition="email == null">
+                <return message="The client's email was not found with customerPartyId ${customerPartyId}"/>
             </if>
-            <set field="email" from="customer.emailAddress"/>
-            <set field="customerName" from="customer.firstName + ' ' + customer.lastName"/>
 
             <entity-find-one entity-name="mantle.party.PartyDetail" value-field="partyDetail">
                 <field-map field-name="partyId" from="customerPartyId"/>
@@ -429,7 +454,7 @@ along with this software (see the LICENSE.md file). If not, see
             <if condition="partyDetail == null"><return message="No partyDetail found with partyId ${customerPartyId}"/></if>
 
             <set field="organizationName" from="partyDetail.organizationName ? partyDetail.organizationName : ''"/>
-            <!-- <set field="customerName" from="partyDetail.firstName + ' ' + partyDetail.lastName + ' ' + organizationName"/> -->
+            <set field="customerName" from="partyDetail.firstName + ' ' + partyDetail.lastName + ' ' + organizationName"/>
 
             <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
             <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
@@ -441,16 +466,14 @@ along with this software (see the LICENSE.md file). If not, see
                     in-map="[productId:productId, productStoreId:productStoreId]"/>
             <if condition="!prodData.detailUrl || !prodData.name">
                 <log message="YotPo product ${productId} store ${productStoreId} data: ${prodData}"/>
-                <return type="danger" message="Not sending review, could not find product ${productId} detail URL or name for store ${storeId}"/>
+                <return type="danger" message="Not sending review, could not find product ${productId} detail URL or name for store ${productStoreId}"/>
             </if>
 
-
             <set field="requestMap" from="[appkey:yotPoConfig.clientId, domain:productStore.storeDomain, sku:productId,
-                    product_title:prodData.name, product_description:'descipcion',
+                    product_title:prodData.name, product_description:prodData.description,
                     product_url:prodData.detailUrl, product_image_url:prodData.imageUrl,
                     display_name:customerName, email:email, review_content:reviewContent,
                     review_title:reviewTitle, review_score:reviewScore, time_stamp:timeStamp]" />
-            <log message="xxxxxxxx ${requestMap}"/>
 
             <service-call name="mantle.yotpo.YotPoServices.login#YotPo" in-map="context" out-map="response"/>
             <if condition="response.token.access_token == null">
@@ -475,7 +498,6 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
                     return
                 }
-
                 responseMap = restResponse.jsonObject()
             ]]></script>
         </actions>
@@ -485,7 +507,6 @@ along with this software (see the LICENSE.md file). If not, see
     <service verb="get" noun="ReviewByProduct">
         <in-parameters>
             <parameter name="productId" required="true"/>
-            <parameter name="storeId" required="true"/>
             <parameter name="productStoreId" required="true"/>
             <parameter name="perPage" type="Integer" default="10"><description>Number of reviews per page</description></parameter>
         </in-parameters>
@@ -494,11 +515,11 @@ along with this software (see the LICENSE.md file). If not, see
         </out-parameters>
         <actions>
             <entity-find-one entity-name="mantle.product.store.ProductStore" value-field="productStore">
-                <field-map field-name="productStoreId" from="storeId"/></entity-find-one>
-            <if condition="productStore == null"><return message="No productStore found with productStoreId ${storeId}"/></if>
+                <field-map field-name="productStoreId"/></entity-find-one>
+            <if condition="productStore == null"><return message="No productStore found with productStoreId ${productStoreId}"/></if>
 
             <set field="yotPoConfigId" from="productStore.yotPoConfigId"/>
-            <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${storeId}"/></if>
+            <if condition="yotPoConfigId == null"><return message="No yotPoConfigId found with productStoreId ${productStoreId}"/></if>
 
             <entity-find-one entity-name="mantle.yotpo.YotPoConfiguration"  value-field="yotPoConfig"/>
             <if condition="yotPoConfig == null"><return error="true" message="No YotPoConfiguration found with ID ${yotPoConfigId}"/></if>
@@ -522,40 +543,8 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
                     return
                 }
-
                 responseMap = restResponse.jsonObject()
             ]]></script>
-        </actions>
-    </service>
-
-    <service verb="get" noun="CanUserMakereview">
-        <in-parameters>
-            
-        </in-parameters>
-        <out-parameters>
-            <parameter name="userHasPermission"/>
-        </out-parameters>
-        <actions>
-            <set field="userHasPermission" from="false"/>
-            <if condition="ec.user.userAccount != null">
-                <entity-find entity-name="mantle.order.OrderHeaderAndPart" list="orderList" distinct="true">
-                    <econdition field-name="customerPartyId" from="ec.user.userAccount.partyId"/>
-                    <econdition field-name="statusId" value="OrderPlaced"/>
-                    <select-field field-name="orderId" />
-                </entity-find>
-            
-                <iterate list="orderList" entry="order">
-                    <service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:order.orderId]"
-                        out-map="orderInfo"/>
-
-                    <iterate list="orderInfo.orderItemList" entry="orderItem">
-                        <if condition="orderItem.productId == productId">
-                            <set field="userHasPermission" from="true"/>
-                            <return />
-                        </if> 
-                    </iterate>     
-                </iterate>
-            </if>
         </actions>
     </service>
 
@@ -588,10 +577,8 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
                     return
                 }
-
                 token = restResponse.jsonObject()
                 // ec.logger.warn("${token}")
-
                 if(token.status != null || token.error != null) {
                     ec.logger.error("YotPo API Error Response ${token.status != null ? token.status.code : token.error}")
                     ec.message.addMessage("YotPo API Error Response ${token.status != null ? token.status.error_type : token.error}")
