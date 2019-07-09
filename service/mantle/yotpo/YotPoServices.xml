@@ -2,12 +2,10 @@
 <!--
 This software is in the public domain under CC0 1.0 Universal plus a 
 Grant of Patent License.
-
 To the extent possible under law, the author(s) have dedicated all
 copyright and related and neighboring rights to this software to the
 public domain worldwide. This software is distributed without any
 warranty.
-
 You should have received a copy of the CC0 Public Domain Dedication
 along with this software (see the LICENSE.md file). If not, see
 <http://creativecommons.org/publicdomain/zero/1.0/>.
@@ -220,7 +218,6 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode} ${restResponse.reasonPhrase}", "danger")
                     return
                 }
-
                 responseMap = restResponse.jsonObject()
             ]]></script>
             <message type="success">YotPo order successful (ID ${orderId})</message>
@@ -417,9 +414,7 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
                     return
                 }
-
                 responseMap = restResponse.jsonObject()
-
             ]]></script>
         </actions>
     </service>
@@ -503,7 +498,6 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
                     return
                 }
-
                 responseMap = restResponse.jsonObject()
             ]]></script>
         </actions>
@@ -549,7 +543,6 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
                     return
                 }
-
                 responseMap = restResponse.jsonObject()
             ]]></script>
         </actions>
@@ -584,10 +577,8 @@ along with this software (see the LICENSE.md file). If not, see
                     ec.message.addMessage("YotPo API Error ${restResponse.statusCode}")
                     return
                 }
-
                 token = restResponse.jsonObject()
                 // ec.logger.warn("${token}")
-
                 if(token.status != null || token.error != null) {
                     ec.logger.error("YotPo API Error Response ${token.status != null ? token.status.code : token.error}")
                     ec.message.addMessage("YotPo API Error Response ${token.status != null ? token.status.error_type : token.error}")
