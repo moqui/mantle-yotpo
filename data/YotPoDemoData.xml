@@ -33,8 +33,16 @@ along with this software (see the LICENSE.md file). If not, see
                 WP eCommerce           wp_ecommerce
                 Zepo                   zepo
                 Any other platform     general
+		Also see: https://apidocs.yotpo.com/reference#set-the-ecommerce-platform-that-this-account-integ
     -->
-	<YotPo.YotPoConfiguration yotPoConfigId="YotPoDemo" apiVersion="v1"
-		hostName="api.yotpo.com" clientId="" 
-		clientSecret="" platform="general"/>
+	<!-- set 'clientId' to the value of the "App Key" on Account Settings => Store under API Credentials -->
+	<!-- set 'clientSecret' to the value of the "Secret Key" on Account Settings => Store under API Credentials (must have admin account to see) -->
+	<mantle.yotpo.YotPoConfiguration yotPoConfigId="YotPoDemo" apiVersion="v1" hostName="api.yotpo.com"
+			clientId="" clientSecret="" platform="general" validateData="Y"/>
+	<mantle.product.store.ProductStore productStoreId="POPC_DEFAULT" yotPoConfigId="YotPoDemo"/>
+	<!-- NOTE: PsstProductDetailLoc is required as YotPo requires a product URL -->
+	<mantle.product.store.ProductStoreSetting productStoreId="POPC_DEFAULT" settingTypeEnumId="PsstProductDetailUrl" fromDate="0"
+			settingValue="https://${storeDomain}/store/product/${productId}"/>
+	<mantle.product.store.ProductStoreSetting productStoreId="POPC_DEFAULT" settingTypeEnumId="PsstProductImageUrl" fromDate="0"
+			settingValue="https://${storeDomain}/store/content/productImage/${productContentId}"/>
 </entity-facade-xml>
