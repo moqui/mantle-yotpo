@@ -166,14 +166,31 @@ along with this software (see the LICENSE.md file). If not, see
             <set field="organizationName" from="partyDetail.organizationName ? partyDetail.organizationName : ''"/>
             <set field="customerName" from="partyDetail.firstName + ' ' + partyDetail.lastName + ' ' + organizationName"/>
 
-            <!-- TODO: simplify to not use this, queries and assembles a ton of data that isn't used here -->
-            <service-call name="mantle.order.OrderInfoServices.get#OrderDisplayInfo" in-map="[orderId:orderId]" out-map="orderInfo"/>
-            <if condition="orderInfo == null"><return/></if>
+            <entity-find entity-name="mantle.order.OrderItem" list="orderItems">
+                <econdition field-name="orderId" from="orderId"/>
+            </entity-find>
+            <if condition="orderItems == null">
+                <log level="error" message="No order items for order with id: ${orderId}"/>
+                <return/>
+            </if>
             <set field="productsList" from="[:]"/>
 
-            <iterate list="orderInfo.orderItemList" entry="orderItem">
+            <iterate list="orderItems" entry="orderItem">
                 <if condition="orderItem.itemTypeEnumId == 'ItemProduct' &amp;&amp; orderItem.productId">
                     <set field="productId" from="orderItem.productId"/>
+
+                    <!-- Init Get Virtual product Id -->
+                    <entity-find-one entity-name="mantle.product.ProductAssocAndFrom" value-field="productAssoc">
+                        <field-map field-name="toProductId" from="productId"/>
+                        <field-map field-name="productTypeEnumId" value="PtVirtual"/>
+                    </entity-find-one>
+
+                    <!-- If exist virtual product we replace the product id for the virtual product id -->
+                    <if condition="productAssoc">
+                        <set field="productId" from="productAssoc.productId"/>
+                    </if>
+                    <!-- Finish Get Virtual product Id -->
+
                     <service-call name="mantle.yotpo.YotPoServices.get#YotPoProductData" out-map="prodData"
                             in-map="[productId:productId, productStoreId:productStoreId]"/>
                     <if condition="!prodData.detailUrl || !prodData.name">
@@ -183,17 +200,14 @@ along with this software (see the LICENSE.md file). If not, see
 
                     <set field="item" from="[url:prodData.detailUrl, name:prodData.name, image:prodData.imageUrl,
                             description:prodData.description, price:orderItem.unitAmount, specs:prodData.specs]"/>
-                    <script>productsList.put(orderItem.productId, item)</script>
-                </if> 
+                    <script>productsList.put(productId, item)</script>
+                </if>
             </iterate>
-             
+
             <set field="placedDateStr" from="ec.l10n.format(orderHeader.placedDate, 'yyyy-MM-dd')"/>
             <set field="requestMap" from="[validate_data:validateBool, platform:yotPoConfig.platform, email:email,
                     customer_name:customerName,order_date:placedDateStr, order_id:orderId, currency_iso:orderHeader.currencyUomId,
                     products:productsList]"/>
-
-            <!-- TODO: remove this log, for review in production in first deployment -->
-            <log message="YotPo Order ${orderId} requestMap:\n${requestMap}"/>
 
             <if condition="!yotPoConfig.clientId">
                 <log level="warn" message="YotPo clientId not set, Order ${orderId} requestMap:\n${requestMap}"/>
@@ -220,6 +234,8 @@ along with this software (see the LICENSE.md file). If not, see
                 }
                 responseMap = restResponse.jsonObject()
             ]]></script>
+
+            <log level="warn" message="Json Object ended to Yotpo API: ${groovy.json.JsonOutput.toJson(requestMap)}"/>
             <message type="success">YotPo order successful (ID ${orderId})</message>
         </actions>
     </service>
